@@ -2218,6 +2218,9 @@
     // ============================================================================
     const LOCAL_STORAGE_KEY = 'yachiyo_survey_cloud_backup_v1';
     const IMG_CHUNK_SIZE = 15; // 15ページごとに画像チャンク分割して高速クラウド保存
+    const CLOUD_API_ENDPOINT = window.location.protocol === 'file:'
+      ? 'https://yachiyo-survey-analyzer.vercel.app/api/cloud_sync'
+      : '/api/cloud_sync';
     let cloudSaveTimer = null;
     let isCloudSaving = false;
 
@@ -2295,7 +2298,7 @@
       }));
 
       try {
-        const resp = await fetch('/api/cloud_sync', {
+        const resp = await fetch(CLOUD_API_ENDPOINT, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -2346,7 +2349,7 @@
         const cIdx = chunkIndices[i];
         setCloudBadge(`☁️ 用紙画像をクラウド同期中 (${i + 1}/${chunkIndices.length})...`, '#1e40af', '#dbeafe', '#60a5fa');
         try {
-          await fetch('/api/cloud_sync', {
+          await fetch(CLOUD_API_ENDPOINT, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -2364,7 +2367,7 @@
 
     async function fetchImageChunkFromCloud(cIdx) {
       try {
-        const resp = await fetch(`/api/cloud_sync?key=img_chunk_${cIdx}&t=${Date.now()}`, { cache: 'no-store' });
+        const resp = await fetch(`${CLOUD_API_ENDPOINT}?key=img_chunk_${cIdx}&t=${Date.now()}`, { cache: 'no-store' });
         if (!resp.ok) return false;
         const json = await resp.json();
         if (json.ok && json.exists && json.cloudData) {
@@ -2384,7 +2387,7 @@
     async function loadFromCloud(isManual = false) {
       setCloudBadge('🔄 クラウドから最新データ読込中...', '#1e40af', '#dbeafe', '#60a5fa');
       try {
-        const resp = await fetch(`/api/cloud_sync?key=main&t=${Date.now()}`, { cache: 'no-store' });
+        const resp = await fetch(`${CLOUD_API_ENDPOINT}?key=main&t=${Date.now()}`, { cache: 'no-store' });
         const json = await resp.json();
         if (resp.ok && json.ok && json.exists && json.cloudData && Array.isArray(json.cloudData.records) && json.cloudData.records.length > 0) {
           const cd = json.cloudData;
