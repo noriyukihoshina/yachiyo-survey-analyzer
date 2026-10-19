@@ -1,0 +1,2772 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>八千代リハビリテーション病院｜どーんと祭 アンケート解析・四役報告レポート作成システム</title>
+  <!-- PDF.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <!-- SheetJS (Excel出力用) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- Chart.js (グラフ描画用) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --primary: #1e40af;
+      --primary-light: #dbeafe;
+      --accent: #0284c7;
+      --success: #16a34a;
+      --success-bg: #dcfce7;
+      --warning: #d97706;
+      --warning-bg: #fef3c7;
+      --danger: #dc2626;
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #475569;
+      --border: #cbd5e1;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Hiragino Kaku Gothic ProN", "Meiryo", "Yu Gothic", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    /* Header */
+    .app-header {
+      background: linear-gradient(135deg, #1e3a8a 0%, #0369a1 100%);
+      color: #fff;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .app-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .app-title h1 {
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+    .app-title .badge {
+      background: rgba(255,255,255,0.2);
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+    }
+    .nav-tabs {
+      display: flex;
+      gap: 6px;
+    }
+    .nav-tab {
+      background: rgba(255,255,255,0.12);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.25);
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.9rem;
+      transition: all 0.15s;
+    }
+    .nav-tab:hover { background: rgba(255,255,255,0.25); }
+    .nav-tab.active {
+      background: #fff;
+      color: var(--primary);
+      border-color: #fff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+    .header-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-decoration: none;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover { background: #15803d; }
+    .btn-outline { background: #fff; color: var(--text); border-color: var(--border); }
+    .btn-outline:hover { background: #f8fafc; }
+    .btn-warning { background: var(--warning); color: #fff; }
+
+    /* Main Views */
+    .view-section { display: none; padding: 16px 24px; max-width: 1800px; margin: 0 auto; }
+    .view-section.active { display: block; }
+
+    /* Upload Banner */
+    .upload-zone {
+      background: var(--card);
+      border: 2px dashed #60a5fa;
+      border-radius: 12px;
+      padding: 28px;
+      text-align: center;
+      margin-bottom: 16px;
+      transition: all 0.2s;
+    }
+    .upload-zone.dragover {
+      background: #eff6ff;
+      border-color: var(--primary);
+    }
+    .upload-zone h2 { font-size: 1.2rem; color: var(--primary); margin-bottom: 6px; }
+    .upload-zone p { color: var(--muted); font-size: 0.9rem; margin-bottom: 14px; }
+
+    /* Workspace Split Layout (Reader / Verification) */
+    .workspace {
+      display: grid;
+      grid-template-columns: 1fr 560px;
+      gap: 16px;
+      align-items: start;
+    }
+    .viewer-panel {
+      background: var(--card);
+      border-radius: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      padding: 14px;
+      position: sticky;
+      top: 68px;
+    }
+    .viewer-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 10px;
+      margin-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .page-nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .page-indicator {
+      font-weight: 700;
+      font-size: 1rem;
+      min-width: 110px;
+      text-align: center;
+    }
+    .canvas-container {
+      position: relative;
+      width: 100%;
+      max-height: calc(100vh - 175px);
+      overflow: auto;
+      background: #334155;
+      border-radius: 8px;
+      display: flex;
+      justify-content: center;
+      padding: 12px;
+    }
+    .canvas-wrapper {
+      position: relative;
+      display: inline-block;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+      background: #fff;
+    }
+    #pdfCanvas {
+      display: block;
+      max-width: 100%;
+      height: auto;
+    }
+    #overlayLayer {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: auto;
+    }
+    .omr-hotspot {
+      position: absolute;
+      border: 2px solid rgba(100, 116, 139, 0.45);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.12s;
+    }
+    .omr-hotspot:hover {
+      border-color: var(--primary);
+      background: rgba(37, 99, 235, 0.15);
+    }
+    .omr-hotspot.active {
+      border: 2.5px solid #16a34a;
+      background: rgba(22, 163, 74, 0.25);
+      box-shadow: 0 0 0 2px rgba(255,255,255,0.8);
+    }
+
+    /* Form Editor Panel */
+    .editor-panel {
+      background: var(--card);
+      border-radius: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      padding: 16px;
+      max-height: calc(100vh - 84px);
+      overflow-y: auto;
+    }
+    .status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 14px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+    }
+    .status-bar.verified {
+      background: var(--success-bg);
+      border-color: #86efac;
+    }
+    .q-block {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+      background: #fff;
+    }
+    .q-title {
+      font-weight: 700;
+      font-size: 0.92rem;
+      color: var(--primary);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .q-title .q-type {
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--primary-light);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    .choice-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .choice-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .choice-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      background: #f8fafc;
+      cursor: pointer;
+      font-size: 0.88rem;
+      font-weight: 500;
+      text-align: left;
+      transition: all 0.12s;
+      user-select: none;
+    }
+    .choice-btn:hover { border-color: #93c5fd; background: #eff6ff; }
+    .choice-btn.selected {
+      background: #dcfce7;
+      border-color: #16a34a;
+      color: #14532d;
+      font-weight: 700;
+    }
+    .choice-btn .check-icon {
+      width: 18px;
+      height: 18px;
+      border: 2px solid #94a3b8;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      background: #fff;
+      flex-shrink: 0;
+    }
+    .choice-btn.selected .check-icon {
+      background: #16a34a;
+      border-color: #16a34a;
+      color: #fff;
+    }
+    .crop-preview {
+      width: 100%;
+      height: 54px;
+      background: #f1f5f9;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 8px;
+      object-fit: contain;
+      display: block;
+    }
+    .crop-preview.tall { height: 95px; }
+    .text-input {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-family: inherit;
+    }
+    .text-input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(30,64,175,0.15);
+    }
+
+    /* Data Table View */
+    .table-container {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      overflow-x: auto;
+    }
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.84rem;
+    }
+    table.data-table th, table.data-table td {
+      border: 1px solid var(--border);
+      padding: 8px 10px;
+      text-align: left;
+    }
+    table.data-table th {
+      background: #f1f5f9;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    table.data-table tr:hover { background: #f8fafc; }
+
+    /* Executive Report (四役報告用) */
+    .report-wrapper {
+      max-width: 1120px;
+      margin: 0 auto;
+    }
+    .report-page {
+      background: #fff;
+      border-radius: 12px;
+      padding: 32px 36px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      margin-bottom: 24px;
+    }
+    .report-header {
+      border-bottom: 3px solid var(--primary);
+      padding-bottom: 14px;
+      margin-bottom: 22px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .report-header h2 {
+      font-size: 1.5rem;
+      color: var(--primary);
+      letter-spacing: 0.02em;
+    }
+    .report-header .sub {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .kpi-card {
+      background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+      border: 1px solid var(--border);
+      border-left: 5px solid var(--primary);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .kpi-card .label { font-size: 0.8rem; color: var(--muted); font-weight: 600; }
+    .kpi-card .val { font-size: 1.75rem; font-weight: 800; color: var(--primary); margin: 4px 0; }
+    .kpi-card .note { font-size: 0.78rem; color: #334155; }
+
+    .insight-box {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+    }
+    .insight-box h3 {
+      font-size: 1rem;
+      color: var(--primary);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .insight-list {
+      padding-left: 20px;
+      font-size: 0.92rem;
+    }
+    .insight-list li { margin-bottom: 5px; }
+
+    .chart-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+    .chart-grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .chart-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      background: #fff;
+    }
+    .chart-card h4 {
+      font-size: 0.95rem;
+      color: var(--text);
+      border-left: 4px solid var(--primary);
+      padding-left: 10px;
+      margin-bottom: 12px;
+    }
+    .chart-box {
+      position: relative;
+      height: 240px;
+    }
+    .chart-box.small { height: 190px; }
+
+    table.summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.86rem;
+      margin-top: 8px;
+    }
+    table.summary-table th, table.summary-table td {
+      border: 1px solid var(--border);
+      padding: 7px 10px;
+    }
+    table.summary-table th {
+      background: #f1f5f9;
+      text-align: center;
+    }
+    table.summary-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+    /* Print Styles for Executive Report */
+    @media print {
+      body { background: #fff; }
+      .app-header, .no-print { display: none !important; }
+      .view-section { display: none !important; padding: 0 !important; }
+      #view-report { display: block !important; }
+      .report-page {
+        box-shadow: none;
+        border: none;
+        padding: 0;
+        margin-bottom: 20px;
+        page-break-after: always;
+      }
+      .report-page:last-child { page-break-after: auto; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="app-title">
+      <h1>🏥 八千代リハビリテーション病院｜アンケート解析・四役報告システム</h1>
+      <span class="badge" id="loadedBadge">データ未読込</span>
+      <span class="badge" id="cloudStatusBadge" style="background:#065f46;color:#d1fae5;border:1px solid #10b981;cursor:pointer;" onclick="loadFromCloud(true)" title="クリックでクラウドの最新データを再読込">☁️ クラウド接続確認中...</span>
+    </div>
+    <nav class="nav-tabs">
+      <button class="nav-tab active" onclick="switchView('reader')">① 読み取り・高速確認</button>
+      <button class="nav-tab" onclick="switchView('table')">② 回答データ一覧（Excel出力）</button>
+      <button class="nav-tab" onclick="switchView('report')">③ 四役報告用サマリー資料</button>
+    </nav>
+    <div class="header-actions">
+      <button class="btn btn-primary" style="background:#0ea5e9;border-color:#38bdf8;" onclick="document.getElementById('pdfFileInput').click()" title="新規または1日目のPDFを読み込む">📁 PDF読込</button>
+      <button class="btn btn-primary" style="background:#6366f1;border-color:#818cf8;" onclick="document.getElementById('pdfAppendInput').click()" title="現在のデータの末尾に別PCや2日目の追加PDF（130件等）を結合して読み込む">➕ 追加PDF結合(130件等)</button>
+      <input type="file" id="pdfAppendInput" accept="application/pdf" style="display:none" onchange="handlePDFAppend(event)">
+      <button class="btn btn-primary" style="background:#0d9488;border-color:#14b8a6;" onclick="document.getElementById('googleFormInput').click()" title="GoogleフォームのCSVまたはExcel(.xlsx)を読み込んで合算（表記ゆれ自動補正・重複自動除外）">🌐 Googleフォーム取込</button>
+      <input type="file" id="googleFormInput" accept=".csv,.xlsx,.xls" multiple style="display:none" onchange="importGoogleFormFile(event)">
+      <button class="btn btn-outline" style="background:#ecfdf5;border-color:#10b981;color:#065f46;font-weight:700;" onclick="saveToCloudNow(true)" title="現在の作業状態を今すぐクラウドへ強制保存">☁️ クラウド保存</button>
+      <button class="btn btn-outline" style="background:#eff6ff;border-color:#3b82f6;color:#1d4ed8;font-weight:700;" onclick="loadFromCloud(true)" title="別PCで保存した最新のクラウドデータを読み込む">🔄 クラウド最新読込</button>
+      <button class="btn btn-outline" onclick="saveBackupJSON()" title="作業途中のデータをPCにファイル保存">💾 ファイル保存</button>
+      <button class="btn btn-outline" onclick="document.getElementById('jsonRestoreInput').click()" title="PCに保存した作業データファイルを読込（クラウドにも自動反映）">📂 ファイル復元</button>
+      <input type="file" id="jsonRestoreInput" accept=".json" style="display:none" onchange="loadBackupJSON(event)">
+      <button class="btn btn-outline" style="border-color:#6366f1;color:#4338ca;" onclick="document.getElementById('jsonMergeInput').click()" title="保存データ(.json)を現在のデータに合算する">🔗 データ合算</button>
+      <input type="file" id="jsonMergeInput" accept=".json" multiple style="display:none" onchange="mergeBackupJSON(event)">
+      <button class="btn btn-success" onclick="exportToExcel()">📊 Excel(xlsx)出力</button>
+    </div>
+  </header>
+
+  <!-- VIEW 1: PDF Reader & Fast Verification -->
+  <section id="view-reader" class="view-section active">
+    <div class="upload-zone" id="uploadZone">
+      <h2>📄 スキャンしたアンケートPDF（100枚〜250枚以上対応）をここにドロップ、または選択してください</h2>
+      <p>☁️ <strong>クラウド自動記憶対応</strong>：このPCと職場のPCのどちらからでも自動で続きから再開でき、別PCからの追加130件PDF結合にも対応しています。</p>
+      <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="document.getElementById('pdfFileInput').click()">📁 アンケートPDFファイルを選択</button>
+        <button class="btn btn-primary" style="background:#059669;border-color:#10b981;" onclick="loadFromCloud(true)">☁️ クラウドに保存済みの続きデータを読み込む</button>
+        <button class="btn btn-outline" onclick="loadDemoSample()">🧪 サンプルデータで試す</button>
+      </div>
+      <input type="file" id="pdfFileInput" accept="application/pdf" style="display:none" onchange="handlePDFSelect(event)">
+      <div id="batchProgress" style="display:none; margin-top:14px; font-weight:700; color:var(--primary);"></div>
+    </div>
+
+    <div class="workspace" id="workspaceArea" style="display:none;">
+      <!-- Left: Questionnaire Image & Interactive Hotspots -->
+      <div class="viewer-panel">
+        <div class="viewer-toolbar">
+          <div class="page-nav">
+            <button class="btn btn-outline" onclick="goPage(-1)">◀ 前の用紙 (←)</button>
+            <span class="page-indicator" id="pageIndicator">1 / 1 枚目</span>
+            <button class="btn btn-primary" onclick="verifyAndNext()">✓ 確認OK・次へ (Enter / →)</button>
+          </div>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <span style="font-size:0.8rem; color:var(--muted);" id="progressCounter">確認済: 0 / 0</span>
+            <button class="btn btn-outline" onclick="autoDetectCurrentPage()" title="現在のページを再自動判定">🔍 再判定</button>
+            <button class="btn btn-outline" onclick="toggleCalibrationMode()" id="calibBtn" title="スキャン位置がズレている場合に枠位置を微調整">⚙️ 位置微調整</button>
+          </div>
+        </div>
+
+        <div id="calibControls" style="display:none; background:#fef3c7; padding:8px 12px; border-radius:8px; margin-bottom:8px; font-size:0.82rem;">
+          <strong>📐 全体位置ズレ補正（スキャン位置の微調整）：</strong>
+          上下(Y): <input type="range" min="-40" max="40" value="0" id="offsetYSlider" oninput="updateOffsets()"> <span id="offsetYVal">0</span>px ／
+          左右(X): <input type="range" min="-40" max="40" value="0" id="offsetXSlider" oninput="updateOffsets()"> <span id="offsetXVal">0</span>px
+          <button class="btn btn-primary" style="padding:3px 10px; font-size:0.78rem; margin-left:8px;" onclick="reRunAllPagesOMR()">全ページに適用して再判定</button>
+        </div>
+
+        <div class="canvas-container">
+          <div class="canvas-wrapper" id="canvasWrapper">
+            <canvas id="pdfCanvas"></canvas>
+            <div id="overlayLayer"></div>
+          </div>
+        </div>
+        <p style="font-size:0.78rem; color:var(--muted); margin-top:6px; text-align:center;">
+          💡 <strong>ヒント：</strong>左のアンケート画像上の緑/灰色の枠を直接クリックしてもチェックのON/OFFができます。キーボードの「→」または「Enter」で次の用紙へ進みます。
+        </p>
+      </div>
+
+      <!-- Right: Extracted Answers & Zoomed Crops -->
+      <div class="editor-panel">
+        <div class="status-bar" id="recordStatusBar">
+          <div>
+            <strong id="recordTitle">No. 1 の回答データ</strong>
+            <span id="recordStatusBadge" style="margin-left:8px; font-size:0.8rem; padding:2px 8px; border-radius:999px; background:#fef3c7; color:#b45309;">自動読取（未確認）</span>
+          </div>
+          <label style="display:flex; align-items:center; gap:6px; font-size:0.85rem; cursor:pointer;">
+            <input type="checkbox" id="excludePageCheck" onchange="toggleExcludeCurrentPage()"> このページを集計から除外（白紙等）
+          </label>
+        </div>
+
+        <!-- 基本属性 -->
+        <div class="q-block">
+          <div class="q-title">
+            <span>基本属性（年齢・性別・お住まい）</span>
+            <span class="q-type">切り抜き拡大＆選択</span>
+          </div>
+          <canvas id="cropHeader" class="crop-preview tall"></canvas>
+
+          <div style="margin-bottom:8px;">
+            <div style="font-size:0.8rem; font-weight:700; color:var(--muted); margin-bottom:4px;">年齢（歳代）</div>
+            <div class="choice-row" id="ageButtons"></div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div>
+              <div style="font-size:0.8rem; font-weight:700; color:var(--muted); margin-bottom:4px;">性別（択一）</div>
+              <div class="choice-row" id="genderButtons"></div>
+            </div>
+            <div>
+              <div style="font-size:0.8rem; font-weight:700; color:var(--muted); margin-bottom:4px;">お住まい（択一）</div>
+              <div class="choice-row" id="residenceButtons"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Q1 -->
+        <div class="q-block">
+          <div class="q-title">
+            <span>【Q1】本日参考になった内容はどれですか？</span>
+            <span class="q-type">複数選択可</span>
+          </div>
+          <div class="choice-grid" id="q1Buttons"></div>
+        </div>
+
+        <!-- Q2 -->
+        <div class="q-block">
+          <div class="q-title">
+            <span>【Q2】これまで「八千代リハビリテーション病院」をご存知でしたか？</span>
+            <span class="q-type">択一選択</span>
+          </div>
+          <div class="choice-grid" id="q2Buttons"></div>
+        </div>
+
+        <!-- Q3 -->
+        <div class="q-block">
+          <div class="q-title">
+            <span>【Q3】ご家族が入院リハビリを必要とした際、当院を利用したいと思いますか？</span>
+            <span class="q-type">択一選択</span>
+          </div>
+          <div class="choice-grid" id="q3Buttons"></div>
+        </div>
+
+        <!-- Q4 -->
+        <div class="q-block">
+          <div class="q-title">
+            <span>【Q4】現在ご自身やご家族の健康について気になることはありますか？</span>
+            <span class="q-type">複数選択可</span>
+          </div>
+          <div class="choice-grid" id="q4Buttons"></div>
+          <div style="margin-top:8px;">
+            <div style="font-size:0.78rem; color:var(--muted); margin-bottom:3px;">▼ Q4「その他」記入欄の拡大プレビュー</div>
+            <canvas id="cropQ4Other" class="crop-preview"></canvas>
+            <input type="text" class="text-input" id="q4OtherInput" placeholder="Q4「その他」の記載内容があれば入力..." oninput="updateTextField('q4Other', this.value)">
+          </div>
+        </div>
+
+        <!-- Q5 -->
+        <div class="q-block">
+          <div class="q-title">
+            <span>【Q5】来年のどーんと祭で当院に期待する内容は何ですか？</span>
+            <span class="q-type">自由記載</span>
+          </div>
+          <div style="font-size:0.78rem; color:var(--muted); margin-bottom:3px;">▼ Q5 自由記載欄の拡大プレビュー</div>
+          <canvas id="cropQ5" class="crop-preview tall"></canvas>
+          <textarea class="text-input" id="q5TextInput" rows="2" placeholder="自由記載の内容があればここに入力..." oninput="updateTextField('q5Text', this.value)"></textarea>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; margin-top:12px;">
+          <button class="btn btn-outline" onclick="goPage(-1)">◀ 前のページ</button>
+          <button class="btn btn-success" style="padding:10px 24px; font-size:0.95rem;" onclick="verifyAndNext()">✓ この内容で確定して次へ (Enter)</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- VIEW 2: Data Table & Excel Export -->
+  <section id="view-table" class="view-section">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+      <div>
+        <h2 style="font-size:1.25rem; color:var(--primary);">📋 回答データ一覧表（紙アンケート＋Googleフォーム統合・全件検証）</h2>
+        <p style="font-size:0.86rem; color:var(--muted);">Googleフォームの表記ゆれ（40代→40歳代、八千代市以外→八千代市外）は自動統一されます。テスト回答（例: 10/15送信分）は「除外」チェックで集計から外せます。</p>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn btn-primary" style="background:#0d9488;border-color:#14b8a6;" onclick="document.getElementById('googleFormInput').click()">🌐 Googleフォーム(CSV/Excel)取込</button>
+        <button class="btn btn-outline" onclick="exportToCSV()">📄 CSV出力</button>
+        <button class="btn btn-success" onclick="exportToExcel()">📊 Excelブック(.xlsx)出力</button>
+      </div>
+    </div>
+    <div class="table-container">
+      <table class="data-table" id="recordsTable">
+        <thead>
+          <tr>
+            <th>No.</th>
+            <th>回答経路・日時</th>
+            <th>状態 / 集計除外</th>
+            <th>年齢</th>
+            <th>性別</th>
+            <th>お住まい</th>
+            <th>Q1:参考になった内容(複数)</th>
+            <th>Q2:当院の認知度</th>
+            <th>Q3:今後の利用意向</th>
+            <th>Q4:健康で気になること(複数)</th>
+            <th>Q4:その他記述</th>
+            <th>Q5:来年期待する内容</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="recordsTableBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- VIEW 3: Executive Report for Hospital Top 4 Executives (四役報告用資料) -->
+  <section id="view-report" class="view-section">
+    <div class="no-print" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; max-width:1120px; margin-left:auto; margin-right:auto; flex-wrap:wrap; gap:10px;">
+      <div>
+        <h2 style="font-size:1.25rem; color:var(--primary);">📈 病院四役報告用 エグゼクティブ・サマリー資料（客観的データ分析・根拠検証版）</h2>
+        <p style="font-size:0.86rem; color:var(--muted);">回復期リハ病院の経営実態（急性期からの紹介・転院承諾率、直接対話コスト、個人別ターゲット捕捉率）に即し、論理の飛躍を排した四役会報告用レポートです。</p>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <label style="font-size:0.85rem; font-weight:700; background:#fff; padding:6px 12px; border-radius:8px; border:1px solid var(--border);">
+          💰 出展総予算(円): <input type="number" id="budgetInput" value="214000" step="1000" style="width:100px; padding:3px 6px; font-weight:700; border:1px solid #94a3b8; border-radius:4px;" oninput="renderExecutiveReport()">
+        </label>
+        <button class="btn btn-primary" onclick="window.print()">🖨️ A4報告書として印刷 / PDF保存</button>
+        <button class="btn btn-success" onclick="exportToExcel()">📊 集計表付きExcelを出力</button>
+      </div>
+    </div>
+
+    <div class="report-wrapper">
+      <!-- PAGE 1: Executive Summary, Honest Cost Evaluation & Main Results -->
+      <div class="report-page">
+        <div class="report-header">
+          <div>
+            <h2>「どーんと祭」当院ブース 来場者アンケート集計・客観効果検証報告書</h2>
+            <div class="sub">医療法人社団 八千代リハビリテーション病院 ｜ 報告対象：病院四役会（院長・副院長・看護部長・事務長）</div>
+          </div>
+          <div style="text-align:right; font-size:0.85rem; color:var(--muted);">
+            <div>集計日：<span id="reportDate"></span> ／ 出展総費用：<strong id="reportBudgetLabel">214,000</strong> 円</div>
+            <div>有効回答数：<strong id="reportValidCount" style="color:var(--primary); font-size:1.05rem;">0</strong> 名</div>
+          </div>
+        </div>
+
+        <!-- 4 Key KPIs (Grounded, Zero-Leap Metrics) -->
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="label">① 有効回答数・対話コスト</div>
+            <div class="val" id="kpiTotal">0<span style="font-size:1rem; font-weight:600;"> 名</span></div>
+            <div class="note" id="kpiCityRatio">回答者1名あたり直接対話単価: - 円</div>
+          </div>
+          <div class="kpi-card">
+            <div class="label">② 新規認知・専門理解の獲得(Q2)</div>
+            <div class="val" id="kpiNewKnown">0.0<span style="font-size:1rem;"> %</span></div>
+            <div class="note" id="kpiNewKnownSub">初認知: -名 / 名前のみ既知: -名</div>
+          </div>
+          <div class="kpi-card">
+            <div class="label">③ 転院候補としての指名・検討率(Q3)</div>
+            <div class="val" id="kpiPositiveIntent">0.0<span style="font-size:1rem;"> %</span></div>
+            <div class="note" id="kpiIntentSub">急性期MSW提案時の第一想起・承諾土壌</div>
+          </div>
+          <div class="kpi-card">
+            <div class="label">④ 最多体験・高評価企画(Q1)</div>
+            <div class="val" id="kpiTopQ1" style="font-size:1.25rem; line-height:1.3; margin-top:8px;">-</div>
+            <div class="note" id="kpiTopQ1Sub">回答者の -% が「参考になった」と評価</div>
+          </div>
+        </div>
+
+        <!-- Event Context Box: Yachiyo Donto Matsuri Characteristics -->
+        <div style="background:#f8fafc; border:1px solid #cbd5e1; border-left:5px solid #0284c7; border-radius:8px; padding:12px 16px; margin-bottom:18px; font-size:0.84rem;">
+          <div style="font-weight:700; color:#0f172a; margin-bottom:4px;">📌 分析の前提：「八千代どーんと祭」のイベント特性・立地と来場者プロファイル</div>
+          <div style="color:#334155; line-height:1.55;">
+            ・<strong>イベントの位置づけ</strong>：八千代商工会議所内に事務局を置く実行委員会主催の<strong>「地域最大級の総合産業祭」</strong>（商工業・農業・観光のPR、名物「源右衛門鍋の豚汁」や農産物即売会、やっちブランドセレクション等）。医療専門イベントではなく「飲食・買い物・娯楽」目的の幅広い市民・家族連れが集まる場。<br>
+            ・<strong>会場立地と当院（米本）の地理的関係</strong>：会場の「八千代総合運動公園 多目的広場（萱田／東葉高速線・八千代中央駅・村上駅から徒歩約15分、一般駐車場なし）」は、<strong>当院所在地（米本1808）から約2.5km離れた市中心部エリア</strong>。普段当院の前を通らない市民層に対する<strong>「認知度の現状把握とブランディング（Q2・Q3）」</strong>に最適なフィールドであり、かつ「駅から徒歩15分歩いて来場できる自立・活動性の高い層」であるため<strong>「リハ部が今後行う地域健康教室のターゲット層（Q4）」</strong>と完全に一致する。
+          </div>
+        </div>
+
+        <!-- Auto-generated Executive Insights (Rigorous Third-Party Analyst Perspective) -->
+        <div class="insight-box">
+          <h3>💡 四役会向け 分析サマリー（出展の出来評価・認知ブランディング調査・リハ部健康教室優先順位・次年度改善材料）</h3>
+          <ul class="insight-list" id="executiveInsights">
+            <li>データを読み込むと、ここに論理の飛躍を排した四役報告用の重要ポイント要約が自動生成されます。</li>
+          </ul>
+        </div>
+
+        <!-- Attributes Row -->
+        <div class="chart-grid-3">
+          <div class="chart-card">
+            <h4>回答者の年齢層分布</h4>
+            <div class="chart-box small"><canvas id="chartAge"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <h4>回答者の性別割合</h4>
+            <div class="chart-box small"><canvas id="chartGender"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <h4>お住まい（八千代市内・市外）</h4>
+            <div class="chart-box small"><canvas id="chartResidence"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Q1 & Q4 Charts -->
+        <div class="chart-grid-2">
+          <div class="chart-card">
+            <h4>【Q1】今回の出展企画の出来評価・参加者の関心度（複数回答）</h4>
+            <div class="chart-box"><canvas id="chartQ1"></canvas></div>
+            <div id="tableQ1Wrap"></div>
+          </div>
+          <div class="chart-card">
+            <h4>【Q4】今後リハ部で行う「地域健康教室」テーマ優先順位付け</h4>
+            <div class="chart-box"><canvas id="chartQ4"></canvas></div>
+            <div id="tableQ4Wrap"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAGE 2: Branding Survey, Cross-Tabulation & Next Year Materials -->
+      <div class="report-page">
+        <div class="report-header">
+          <div>
+            <h2>病院認知度・ブランディング調査（Q2・Q3）および来年の出展改善材料（Q5）</h2>
+            <div class="sub">「八千代どーんと祭」来場者層における当院ブランド浸透度と次年度に向けた深掘り分析</div>
+          </div>
+          <div style="font-size:0.85rem; color:var(--muted);">2 / 2 ページ</div>
+        </div>
+
+        <div class="chart-grid-2">
+          <div class="chart-card">
+            <h4>【Q2】病院認知度の現状把握（既知層 vs 新規認知層）</h4>
+            <div class="chart-box small"><canvas id="chartQ2"></canvas></div>
+            <div id="tableQ2Wrap"></div>
+          </div>
+          <div class="chart-card">
+            <h4>【Q3】ブランディング調査：「入院リハビリ専門病院」としての利用意向</h4>
+            <div class="chart-box small"><canvas id="chartQ3"></canvas></div>
+            <div id="tableQ3Wrap"></div>
+          </div>
+        </div>
+
+        <!-- Cross Tabulations for Hospital Executives -->
+        <div class="chart-grid-2">
+          <div class="chart-card">
+            <h4>【ブランディング検証①】お住まい別（八千代市内 vs 市外）× 認知度（Q2）</h4>
+            <p style="font-size:0.8rem; color:var(--muted); margin-bottom:6px;">米本から離れた市中心部会場（萱田）において、八千代市民にどれだけ当院が認知されているかの現状把握</p>
+            <div id="crossResidenceQ2"></div>
+          </div>
+          <div class="chart-card">
+            <h4>【ブランディング検証②】当院の認知度（Q2）× 入院リハ利用意向（Q3）</h4>
+            <p style="font-size:0.8rem; color:var(--muted); margin-bottom:6px;">ブース参加を通じて「入院してリハビリを行う専門病院」というブランド価値・信頼がどれだけ浸透したか</p>
+            <div id="crossQ2Q3"></div>
+          </div>
+        </div>
+
+        <!-- Q4 x Q1 Individual Target Capture Matrix -->
+        <div class="chart-card" style="margin-bottom:16px;">
+          <h4>【出展評価×次年度改善検証③】参加者の健康関心（Q4）と今回参考になった企画（Q1）の一致率（個人別クロス集計）</h4>
+          <p style="font-size:0.8rem; color:var(--muted); margin-bottom:6px;">
+            ※分析の視点：Q1（今回の出展の出来・関心評価）をさらに深掘りするため、<strong>「Q4で特定の健康課題を持つ参加者が、今回対応するQ1企画にどれだけ参加・満足できたか（＝一致率）」</strong>を算出。来年のどーんと祭で「見せ方や誘導を工夫すればさらに伸ばせる企画」と「リハ部の健康教室へ引き継ぐべきテーマ」を明確化しています。
+          </p>
+          <div id="gapMatrixQ4Q1"></div>
+        </div>
+
+        <!-- Free Text Comments -->
+        <div class="chart-card" style="margin-top:16px;">
+          <h4>【Q5】来年の「どーんと祭」をより良い出展にするための材料（参加者の期待・自由記載）＆【Q4】その他記載一覧</h4>
+          <div id="freeCommentsList" style="margin-top:8px;"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    // Configure PDF.js worker
+    if (window.pdfjsLib) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+
+    // Master Questionnaire Schema (matches the final questionnaire sheet)
+    const SCHEMA = {
+      ages: ['10歳代', '20歳代', '30歳代', '40歳代', '50歳代', '60歳代', '70歳代', '80歳代', '90歳代', '未記入'],
+      genders: ['男性', '女性', '未記入'],
+      residences: ['八千代市内', '八千代市外', '未記入'],
+      q1: [
+        '筋肉量測定',
+        '血管年齢測定',
+        'お薬相談',
+        '栄養レッスン',
+        '人生会議（終活）の案内'
+      ],
+      q2: [
+        'よく知っている（自身や家族が利用したことがある）',
+        '名前や場所は知っている',
+        '今日初めて知った'
+      ],
+      q3: [
+        'ぜひ利用したい',
+        '候補の一つとして検討したい',
+        '他の病院を選ぶ・わからない'
+      ],
+      q4: [
+        '足腰の衰え・転倒',
+        '物忘れ・認知機能',
+        '食事・栄養バランス',
+        '薬の飲み方',
+        '将来の介護や終活',
+        'とくにない',
+        'その他'
+      ]
+    };
+
+    // Normalized Coordinates (0.0 to 1.0) calibrated to the scanned questionnaire sheet
+    const HOTSPOTS = {
+      gender: [
+        { idx: 0, label: '男性', x: 0.220, y: 0.160, w: 0.055, h: 0.025 },
+        { idx: 1, label: '女性', x: 0.320, y: 0.160, w: 0.055, h: 0.025 }
+      ],
+      residence: [
+        { idx: 0, label: '八千代市内', x: 0.220, y: 0.184, w: 0.115, h: 0.026 },
+        { idx: 1, label: '八千代市外', x: 0.382, y: 0.184, w: 0.110, h: 0.026 }
+      ],
+      q1: [
+        { idx: 0, x: 0.095, y: 0.250, w: 0.024, h: 0.017 },
+        { idx: 1, x: 0.095, y: 0.272, w: 0.024, h: 0.017 },
+        { idx: 2, x: 0.095, y: 0.293, w: 0.024, h: 0.017 },
+        { idx: 3, x: 0.095, y: 0.315, w: 0.024, h: 0.017 },
+        { idx: 4, x: 0.095, y: 0.336, w: 0.024, h: 0.017 }
+      ],
+      q2: [
+        { idx: 0, x: 0.094, y: 0.401, w: 0.024, h: 0.017 },
+        { idx: 1, x: 0.094, y: 0.422, w: 0.024, h: 0.017 },
+        { idx: 2, x: 0.094, y: 0.444, w: 0.024, h: 0.017 }
+      ],
+      q3: [
+        { idx: 0, x: 0.092, y: 0.530, w: 0.024, h: 0.017 },
+        { idx: 1, x: 0.092, y: 0.552, w: 0.024, h: 0.017 },
+        { idx: 2, x: 0.092, y: 0.573, w: 0.024, h: 0.017 }
+      ],
+      q4: [
+        { idx: 0, x: 0.090, y: 0.637, w: 0.024, h: 0.017 },
+        { idx: 1, x: 0.090, y: 0.659, w: 0.024, h: 0.017 },
+        { idx: 2, x: 0.090, y: 0.680, w: 0.024, h: 0.017 },
+        { idx: 3, x: 0.090, y: 0.702, w: 0.024, h: 0.017 },
+        { idx: 4, x: 0.090, y: 0.724, w: 0.024, h: 0.017 },
+        { idx: 5, x: 0.090, y: 0.745, w: 0.024, h: 0.017 },
+        { idx: 6, x: 0.090, y: 0.767, w: 0.024, h: 0.017 }
+      ]
+    };
+
+    // App State
+    let pdfDoc = null;
+    let currentPage = 1;
+    let totalPages = 0;
+    let records = []; // Array of page answers
+    let globalOffsetX = 0; // px on 1000px base
+    let globalOffsetY = 0;
+    let chartInstances = {};
+
+    function createEmptyRecord(pageNum) {
+      return {
+        page: pageNum,
+        verified: false,
+        excluded: false,
+        age: '未記入',
+        gender: '未記入',
+        residence: '未記入',
+        q1: [], // array of indices
+        q2: null, // index or null
+        q3: null, // index or null
+        q4: [], // array of indices
+        q4Other: '',
+        q5Text: ''
+      };
+    }
+
+    // Initialize UI Buttons
+    function initFormButtons() {
+      document.getElementById('reportDate').textContent = new Date().toLocaleDateString('ja-JP');
+
+      // Age buttons
+      const ageWrap = document.getElementById('ageButtons');
+      ageWrap.innerHTML = '';
+      SCHEMA.ages.forEach(age => {
+        const b = document.createElement('button');
+        b.className = 'choice-btn';
+        b.style.padding = '5px 9px';
+        b.style.fontSize = '0.8rem';
+        b.textContent = age;
+        b.onclick = () => {
+          records[currentPage - 1].age = age;
+          refreshEditorUI();
+          scheduleCloudSave();
+        };
+        ageWrap.appendChild(b);
+      });
+
+      // Gender buttons
+      const genderWrap = document.getElementById('genderButtons');
+      genderWrap.innerHTML = '';
+      SCHEMA.genders.forEach(g => {
+        const b = document.createElement('button');
+        b.className = 'choice-btn';
+        b.style.padding = '6px 10px';
+        b.textContent = g;
+        b.onclick = () => {
+          records[currentPage - 1].gender = g;
+          refreshEditorUI();
+          scheduleCloudSave();
+        };
+        genderWrap.appendChild(b);
+      });
+
+      // Residence buttons
+      const resWrap = document.getElementById('residenceButtons');
+      resWrap.innerHTML = '';
+      SCHEMA.residences.forEach(r => {
+        const b = document.createElement('button');
+        b.className = 'choice-btn';
+        b.style.padding = '6px 10px';
+        b.textContent = r;
+        b.onclick = () => {
+          records[currentPage - 1].residence = r;
+          refreshEditorUI();
+          scheduleCloudSave();
+        };
+        resWrap.appendChild(b);
+      });
+
+      // Q1 (Multi)
+      const q1Wrap = document.getElementById('q1Buttons');
+      q1Wrap.innerHTML = '';
+      SCHEMA.q1.forEach((label, idx) => {
+        const b = document.createElement('div');
+        b.className = 'choice-btn';
+        b.innerHTML = `<span class="check-icon">✓</span><span>${label}</span>`;
+        b.onclick = () => toggleMulti('q1', idx);
+        q1Wrap.appendChild(b);
+      });
+
+      // Q2 (Single)
+      const q2Wrap = document.getElementById('q2Buttons');
+      q2Wrap.innerHTML = '';
+      SCHEMA.q2.forEach((label, idx) => {
+        const b = document.createElement('div');
+        b.className = 'choice-btn';
+        b.innerHTML = `<span class="check-icon">●</span><span>${label}</span>`;
+        b.onclick = () => toggleSingle('q2', idx);
+        q2Wrap.appendChild(b);
+      });
+
+      // Q3 (Single)
+      const q3Wrap = document.getElementById('q3Buttons');
+      q3Wrap.innerHTML = '';
+      SCHEMA.q3.forEach((label, idx) => {
+        const b = document.createElement('div');
+        b.className = 'choice-btn';
+        b.innerHTML = `<span class="check-icon">●</span><span>${label}</span>`;
+        b.onclick = () => toggleSingle('q3', idx);
+        q3Wrap.appendChild(b);
+      });
+
+      // Q4 (Multi)
+      const q4Wrap = document.getElementById('q4Buttons');
+      q4Wrap.innerHTML = '';
+      SCHEMA.q4.forEach((label, idx) => {
+        const b = document.createElement('div');
+        b.className = 'choice-btn';
+        b.innerHTML = `<span class="check-icon">✓</span><span>${label}</span>`;
+        b.onclick = () => toggleMulti('q4', idx);
+        q4Wrap.appendChild(b);
+      });
+    }
+
+    function toggleMulti(field, idx) {
+      const rec = records[currentPage - 1];
+      if (!rec) return;
+      const pos = rec[field].indexOf(idx);
+      if (pos >= 0) rec[field].splice(pos, 1);
+      else rec[field].push(idx);
+      rec[field].sort((a, b) => a - b);
+      refreshEditorUI();
+      scheduleCloudSave();
+    }
+
+    function toggleSingle(field, idx) {
+      const rec = records[currentPage - 1];
+      if (!rec) return;
+      rec[field] = (rec[field] === idx) ? null : idx;
+      refreshEditorUI();
+      scheduleCloudSave();
+    }
+
+    function updateTextField(field, val) {
+      const rec = records[currentPage - 1];
+      if (!rec) return;
+      rec[field] = val;
+      if (field === 'q4Other' && val.trim().length > 0 && !rec.q4.includes(6)) {
+        rec.q4.push(6);
+        refreshEditorUI();
+      }
+      scheduleCloudSave();
+    }
+
+    function toggleExcludeCurrentPage() {
+      const rec = records[currentPage - 1];
+      if (!rec) return;
+      rec.excluded = document.getElementById('excludePageCheck').checked;
+      refreshEditorUI();
+      scheduleCloudSave();
+    }
+
+    // View Switching
+    function switchView(viewName) {
+      document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+      document.getElementById('view-' + viewName).classList.add('active');
+      const tabs = document.querySelectorAll('.nav-tab');
+      tabs.forEach(t => t.classList.remove('active'));
+      if (viewName === 'reader') tabs[0].classList.add('active');
+      if (viewName === 'table') { tabs[1].classList.add('active'); renderRecordsTable(); }
+      if (viewName === 'report') { tabs[2].classList.add('active'); renderExecutiveReport(); }
+    }
+
+    // Drag & Drop PDF
+    const uploadZone = document.getElementById('uploadZone');
+    uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+    uploadZone.addEventListener('drop', e => {
+      e.preventDefault();
+      uploadZone.classList.remove('dragover');
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        smartHandlePDFFile(e.dataTransfer.files[0]);
+      }
+    });
+
+    let pdfDocs = [];
+    // クラウド経由で別PCでもアンケート用紙画像を確認できるように保持するマップ { [pageNo]: dataUrl }
+    let pageImages = {};
+
+    function captureCompressedPageImage(sourceCanvas) {
+      const targetW = 540;
+      const scale = targetW / Math.max(1, sourceCanvas.width);
+      const targetH = Math.round(sourceCanvas.height * scale);
+      const c = document.createElement('canvas');
+      c.width = targetW;
+      c.height = targetH;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, targetW, targetH);
+      ctx.drawImage(sourceCanvas, 0, 0, targetW, targetH);
+      return c.toDataURL('image/jpeg', 0.54);
+    }
+
+    function smartHandlePDFFile(file) {
+      if (records && records.length > 0) {
+        const shouldAppend = confirm(
+          `現在 ${records.length} 件のデータが記憶されています。\n\n` +
+          `新しく選択したPDF「${file.name}」を、現在のデータの【末尾に追加結合】しますか？\n\n` +
+          `・[OK] ＝ 末尾に追加結合する（別PCからの追加130件・2日目分はこちら）\n` +
+          `・[キャンセル] ＝ 既存の1日目PDFを同じページ番号で再読込する`
+        );
+        if (shouldAppend) {
+          return appendPDFFile(file);
+        }
+      }
+      return loadPDFFile(file);
+    }
+
+    function handlePDFSelect(e) {
+      if (e.target.files && e.target.files[0]) {
+        smartHandlePDFFile(e.target.files[0]);
+      }
+      e.target.value = '';
+    }
+
+    function handlePDFAppend(e) {
+      if (e.target.files && e.target.files[0]) {
+        appendPDFFile(e.target.files[0]);
+      }
+      e.target.value = '';
+    }
+
+    async function loadPDFFile(file) {
+      const prog = document.getElementById('batchProgress');
+      prog.style.display = 'block';
+      prog.textContent = `⏳ 「${file.name}」を読み込み中...`;
+
+      const existingRecords = (records && records.length > 0) ? [...records] : [];
+      const webRecords = existingRecords.filter(r => r.source === 'Googleフォーム');
+      const paperRecords = existingRecords.filter(r => r.source !== 'Googleフォーム');
+
+      const arrayBuffer = await file.arrayBuffer();
+      pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      pdfDocs = [pdfDoc];
+      const pdfPageCount = pdfDoc.numPages;
+      records = [];
+      const newPageNumbers = [];
+
+      for (let i = 1; i <= pdfPageCount; i++) {
+        if (paperRecords[i - 1] && paperRecords[i - 1].verified) {
+          paperRecords[i - 1].page = i;
+          paperRecords[i - 1].pdfDocIdx = 0;
+          paperRecords[i - 1].pdfPage = i;
+          records.push(paperRecords[i - 1]);
+        } else {
+          const r = createEmptyRecord(i);
+          r.pdfDocIdx = 0;
+          r.pdfPage = i;
+          records.push(r);
+        }
+        newPageNumbers.push(i);
+      }
+
+      // もし既存の紙レコードが今回のPDFページ数より多かった場合（既に追加結合済みの分）も消さずに後ろへ維持
+      if (paperRecords.length > pdfPageCount) {
+        for (let i = pdfPageCount; i < paperRecords.length; i++) {
+          const kept = { ...paperRecords[i], page: records.length + 1 };
+          records.push(kept);
+        }
+      }
+
+      // Googleフォームのレコードも末尾に維持
+      webRecords.forEach(w => {
+        records.push({ ...w, page: records.length + 1 });
+      });
+
+      totalPages = records.length;
+
+      // Run OMR auto-detection across unverified pages & capture compressed page images for cloud sync
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+      for (let p = 1; p <= pdfPageCount; p++) {
+        prog.textContent = `🔍 自動読み取り＆クラウド用画像準備中... (${p} / ${pdfPageCount} ページ)`;
+        const page = await pdfDoc.getPage(p);
+        const viewport = page.getViewport({ scale: 1.5 });
+        tempCanvas.width = viewport.width;
+        tempCanvas.height = viewport.height;
+        await page.render({ canvasContext: tempCtx, viewport }).promise;
+        pageImages[p] = captureCompressedPageImage(tempCanvas);
+        if (!records[p - 1].verified) {
+          runOMROnCanvas(tempCanvas, records[p - 1]);
+        }
+      }
+
+      prog.style.display = 'none';
+      document.getElementById('uploadZone').style.display = 'none';
+      document.getElementById('workspaceArea').style.display = 'grid';
+      updateHeaderLoadedBadge();
+
+      const firstUnverified = records.findIndex(r => !r.verified);
+      currentPage = firstUnverified >= 0 ? firstUnverified + 1 : 1;
+      await renderCurrentPage();
+
+      // クラウドへ本体データとページ画像チャンクを保存
+      await saveToCloudNow(false);
+      uploadPageImageChunks(newPageNumbers);
+    }
+
+    async function appendPDFFile(file) {
+      if (!records || records.length === 0) {
+        return loadPDFFile(file);
+      }
+      const prog = document.getElementById('batchProgress');
+      prog.style.display = 'block';
+      prog.textContent = `⏳ 追加PDF「${file.name}」を読み込み中...`;
+
+      const arrayBuffer = await file.arrayBuffer();
+      const newDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const docIdx = pdfDocs.length;
+      pdfDocs.push(newDoc);
+      pdfDoc = newDoc;
+
+      const prevCount = records.length;
+      const addPages = newDoc.numPages;
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+      const addedPageNumbers = [];
+
+      for (let p = 1; p <= addPages; p++) {
+        const newPageNo = prevCount + p;
+        const r = createEmptyRecord(newPageNo);
+        r.pdfDocIdx = docIdx;
+        r.pdfPage = p;
+        prog.textContent = `🔍 追加PDFの自動読み取り＆クラウド保存準備中... (${p} / ${addPages} ページ)`;
+        const page = await newDoc.getPage(p);
+        const viewport = page.getViewport({ scale: 1.5 });
+        tempCanvas.width = viewport.width;
+        tempCanvas.height = viewport.height;
+        await page.render({ canvasContext: tempCtx, viewport }).promise;
+        pageImages[newPageNo] = captureCompressedPageImage(tempCanvas);
+        runOMROnCanvas(tempCanvas, r);
+        records.push(r);
+        addedPageNumbers.push(newPageNo);
+      }
+
+      totalPages = records.length;
+      prog.style.display = 'none';
+      document.getElementById('uploadZone').style.display = 'none';
+      document.getElementById('workspaceArea').style.display = 'grid';
+      updateHeaderLoadedBadge();
+
+      currentPage = prevCount + 1;
+      await renderCurrentPage();
+
+      await saveToCloudNow(false);
+      uploadPageImageChunks(addedPageNumbers);
+
+      alert(`✅ 追加PDF（${addPages}ページ）を末尾に結合し、クラウドへ自動保存しました！\nNo.${prevCount + 1}〜No.${totalPages} として続きから確認できます。`);
+    }
+
+    // Core OMR (Optical Mark Recognition) Engine
+    function getRegionDarkness(ctx, width, height, box) {
+      const ox = (globalOffsetX / 1000) * width;
+      const oy = (globalOffsetY / 1000) * height;
+      const sx = Math.max(0, Math.floor(box.x * width + ox));
+      const sy = Math.max(0, Math.floor(box.y * height + oy));
+      const sw = Math.min(width - sx, Math.max(1, Math.floor(box.w * width)));
+      const sh = Math.min(height - sy, Math.max(1, Math.floor(box.h * height)));
+
+      const imgData = ctx.getImageData(sx, sy, sw, sh).data;
+      let darkPixels = 0;
+      const totalPixels = sw * sh;
+      for (let i = 0; i < imgData.length; i += 4) {
+        const lum = 0.299 * imgData[i] + 0.587 * imgData[i + 1] + 0.114 * imgData[i + 2];
+        if (lum < 175) {
+          darkPixels += (255 - lum) / 255;
+        }
+      }
+      return darkPixels / Math.max(1, totalPixels);
+    }
+
+    function runOMROnCanvas(canvas, rec) {
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width;
+      const H = canvas.height;
+
+      // 1. Collect all 18 checkboxes to compute adaptive page baseline (median of unchecked boxes)
+      const allCheckboxes = [
+        ...HOTSPOTS.q1.map(b => ({ group: 'q1', ...b })),
+        ...HOTSPOTS.q2.map(b => ({ group: 'q2', ...b })),
+        ...HOTSPOTS.q3.map(b => ({ group: 'q3', ...b })),
+        ...HOTSPOTS.q4.map(b => ({ group: 'q4', ...b }))
+      ];
+
+      // Expand box slightly up and right to catch checkmarks extending outside the box
+      const scores = allCheckboxes.map(b => {
+        const expanded = { x: b.x - 0.002, y: b.y - 0.004, w: b.w + 0.006, h: b.h + 0.004 };
+        return { ...b, score: getRegionDarkness(ctx, W, H, expanded) };
+      });
+
+      const sortedScores = [...scores].map(s => s.score).sort((a, b) => a - b);
+      const medianScore = sortedScores[Math.floor(sortedScores.length * 0.45)];
+      // Threshold: significantly darker than the empty box baseline on this page
+      const threshold = Math.max(medianScore * 1.28, medianScore + 0.032);
+
+      // Multi-choice Q1 & Q4
+      rec.q1 = scores.filter(s => s.group === 'q1' && s.score >= threshold).map(s => s.idx);
+      rec.q4 = scores.filter(s => s.group === 'q4' && s.score >= threshold).map(s => s.idx);
+
+      // Single-choice Q2 & Q3 (pick highest above threshold)
+      const q2Candidates = scores.filter(s => s.group === 'q2' && s.score >= threshold).sort((a, b) => b.score - a.score);
+      rec.q2 = q2Candidates.length > 0 ? q2Candidates[0].idx : null;
+
+      const q3Candidates = scores.filter(s => s.group === 'q3' && s.score >= threshold).sort((a, b) => b.score - a.score);
+      rec.q3 = q3Candidates.length > 0 ? q3Candidates[0].idx : null;
+
+      // Gender circle comparison (男性 vs 女性)
+      const g0 = getRegionDarkness(ctx, W, H, { x: 0.215, y: 0.155, w: 0.065, h: 0.034 });
+      const g1 = getRegionDarkness(ctx, W, H, { x: 0.315, y: 0.155, w: 0.065, h: 0.034 });
+      if (Math.abs(g0 - g1) > 0.018) {
+        rec.gender = g0 > g1 ? '男性' : '女性';
+      } else {
+        rec.gender = '未記入';
+      }
+
+      // Residence circle comparison (八千代市内 vs 八千代市外)
+      const r0 = getRegionDarkness(ctx, W, H, { x: 0.218, y: 0.178, w: 0.118, h: 0.036 });
+      const r1 = getRegionDarkness(ctx, W, H, { x: 0.378, y: 0.178, w: 0.118, h: 0.036 });
+      if (Math.abs(r0 - r1) > 0.015) {
+        rec.residence = r0 > r1 ? '八千代市内' : '八千代市外';
+      } else {
+        rec.residence = '未記入';
+      }
+    }
+
+    async function renderCurrentPage() {
+      const canvas = document.getElementById('pdfCanvas');
+      const ctx = canvas.getContext('2d');
+      const rec = records[currentPage - 1];
+
+      const activeDoc = (rec && typeof rec.pdfDocIdx === 'number' && pdfDocs[rec.pdfDocIdx])
+        ? pdfDocs[rec.pdfDocIdx]
+        : pdfDoc;
+      const targetPdfPage = (rec && rec.pdfPage) ? rec.pdfPage : currentPage;
+
+      if (rec && rec.source === 'Googleフォーム') {
+        canvas.width = 720;
+        canvas.height = 460;
+        ctx.fillStyle = '#f0fdf4';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = '#86efac';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(16, 16, canvas.width - 32, canvas.height - 32);
+        ctx.fillStyle = '#166534';
+        ctx.font = 'bold 24px sans-serif';
+        ctx.fillText('🌐 Googleフォーム（Web回答データ）', 40, 70);
+        ctx.font = '16px sans-serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText(`回答日時: ${rec.timestamp || '不明'}`, 40, 115);
+        ctx.fillText(`基本属性: ${rec.age} / ${rec.gender} / ${rec.residence}`, 40, 150);
+        ctx.fillText(`Q1 参考になった内容: ${rec.q1.map(i => SCHEMA.q1[i]).join(', ') || 'なし'}`, 40, 195);
+        ctx.fillText(`Q2 当院の認知度: ${rec.q2 !== null ? SCHEMA.q2[rec.q2] : '未回答'}`, 40, 230);
+        ctx.fillText(`Q3 今後の利用意向: ${rec.q3 !== null ? SCHEMA.q3[rec.q3] : '未回答'}`, 40, 265);
+        ctx.fillText(`Q4 健康で気になること: ${rec.q4.map(i => SCHEMA.q4[i]).join(', ') || 'なし'}`, 40, 300);
+        ctx.fillText(`Q5 来年期待する内容: ${rec.q5Text || '（記入なし）'}`, 40, 345);
+        if (rec.testReason) {
+          ctx.fillStyle = '#dc2626';
+          ctx.font = 'bold 15px sans-serif';
+          ctx.fillText(`⚠️ 注意: ${rec.testReason}（現在${rec.excluded ? '集計除外中' : '集計対象'}）`, 40, 400);
+        }
+      } else if (activeDoc && targetPdfPage >= 1 && targetPdfPage <= activeDoc.numPages) {
+        const page = await activeDoc.getPage(targetPdfPage);
+        const viewport = page.getViewport({ scale: 1.6 });
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        await page.render({ canvasContext: ctx, viewport }).promise;
+      } else if (rec && pageImages[rec.page]) {
+        // 別PCで開いた際、元のPDFファイルが手元になくてもクラウド同期されたページ画像を描画
+        await new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => {
+            canvas.width = img.width * 1.6;
+            canvas.height = img.height * 1.6;
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            resolve();
+          };
+          img.onerror = () => resolve();
+          img.src = pageImages[rec.page];
+        });
+      } else if (rec) {
+        // 画像チャンク読込中、またはデータのみ復元時のフォールバック表示
+        canvas.width = 720;
+        canvas.height = 520;
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(16, 16, canvas.width - 32, canvas.height - 32);
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 22px sans-serif';
+        ctx.fillText(`📄 紙アンケート No.${rec.page}（クラウド記憶データ）`, 40, 68);
+        ctx.font = '15px sans-serif';
+        ctx.fillStyle = '#334155';
+        ctx.fillText(`状態: ${rec.verified ? '✓ 目視確認済' : '● 未確認'} ${rec.excluded ? '（集計除外中）' : ''}`, 40, 110);
+        ctx.fillText(`基本属性: ${rec.age} / ${rec.gender} / ${rec.residence}`, 40, 145);
+        ctx.fillText(`Q1 参考になった内容: ${rec.q1.map(i => SCHEMA.q1[i]).join(', ') || 'なし'}`, 40, 185);
+        ctx.fillText(`Q2 当院の認知度: ${rec.q2 !== null ? SCHEMA.q2[rec.q2] : '未回答'}`, 40, 220);
+        ctx.fillText(`Q3 今後の利用意向: ${rec.q3 !== null ? SCHEMA.q3[rec.q3] : '未回答'}`, 40, 255);
+        ctx.fillText(`Q4 健康で気になること: ${rec.q4.map(i => SCHEMA.q4[i]).join(', ') || 'なし'}`, 40, 290);
+        ctx.fillText(`Q5 自由記載: ${rec.q5Text || '（記入なし）'}`, 40, 330);
+        ctx.fillStyle = '#0369a1';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.fillText('💡 新たな130件のPDFは上部「➕ 追加PDF結合(130件等)」からそのまま結合できます', 40, 395);
+      }
+
+      renderCropPreviews(canvas);
+      refreshEditorUI();
+    }
+
+    function renderCropPreviews(sourceCanvas) {
+      const W = sourceCanvas.width;
+      const H = sourceCanvas.height;
+      if (!W || !H) return;
+
+      // 1. Header crop (Age, Gender, Residence)
+      drawCrop(sourceCanvas, 'cropHeader', 0.08, 0.128, 0.48, 0.095);
+      // 2. Q4 Other crop
+      drawCrop(sourceCanvas, 'cropQ4Other', 0.08, 0.758, 0.79, 0.036);
+      // 3. Q5 Free text crop
+      drawCrop(sourceCanvas, 'cropQ5', 0.09, 0.842, 0.80, 0.105);
+    }
+
+    function drawCrop(src, targetId, nx, ny, nw, nh) {
+      const dst = document.getElementById(targetId);
+      const sx = Math.floor(nx * src.width);
+      const sy = Math.floor(ny * src.height);
+      const sw = Math.floor(nw * src.width);
+      const sh = Math.floor(nh * src.height);
+      dst.width = sw;
+      dst.height = sh;
+      const dctx = dst.getContext('2d');
+      dctx.fillStyle = '#fff';
+      dctx.fillRect(0, 0, sw, sh);
+      dctx.drawImage(src, sx, sy, sw, sh, 0, 0, sw, sh);
+    }
+
+    function refreshEditorUI() {
+      if (!records.length) return;
+      const rec = records[currentPage - 1];
+
+      document.getElementById('pageIndicator').textContent = `${currentPage} / ${totalPages} 枚目`;
+      const verifiedCount = records.filter(r => r.verified).length;
+      document.getElementById('progressCounter').textContent = `確認済: ${verifiedCount} / ${totalPages}`;
+      document.getElementById('recordTitle').textContent = `No. ${currentPage} の回答データ`;
+      document.getElementById('excludePageCheck').checked = !!rec.excluded;
+      updateHeaderLoadedBadge();
+
+      const bar = document.getElementById('recordStatusBar');
+      const badge = document.getElementById('recordStatusBadge');
+      if (rec.verified) {
+        bar.classList.add('verified');
+        badge.textContent = '✓ 目視確認済';
+        badge.style.background = '#16a34a';
+        badge.style.color = '#fff';
+      } else {
+        bar.classList.remove('verified');
+        badge.textContent = '自動読取（未確認）';
+        badge.style.background = '#fef3c7';
+        badge.style.color = '#b45309';
+      }
+
+      // Sync Age buttons
+      Array.from(document.getElementById('ageButtons').children).forEach((b, i) => {
+        b.classList.toggle('selected', rec.age === SCHEMA.ages[i]);
+      });
+      // Sync Gender buttons
+      Array.from(document.getElementById('genderButtons').children).forEach((b, i) => {
+        b.classList.toggle('selected', rec.gender === SCHEMA.genders[i]);
+      });
+      // Sync Residence buttons
+      Array.from(document.getElementById('residenceButtons').children).forEach((b, i) => {
+        b.classList.toggle('selected', rec.residence === SCHEMA.residences[i]);
+      });
+      // Sync Q1
+      Array.from(document.getElementById('q1Buttons').children).forEach((b, i) => {
+        b.classList.toggle('selected', rec.q1.includes(i));
+      });
+      // Sync Q2
+      Array.from(document.getElementById('q2Buttons').children).forEach((b, i) => {
+        b.classList.toggle('selected', rec.q2 === i);
+      });
+      // Sync Q3
+      Array.from(document.getElementById('q3Buttons').children).forEach((b, i) => {
+        b.classList.toggle('selected', rec.q3 === i);
+      });
+      // Sync Q4
+      Array.from(document.getElementById('q4Buttons').children).forEach((b, i) => {
+        b.classList.toggle('selected', rec.q4.includes(i));
+      });
+
+      document.getElementById('q4OtherInput').value = rec.q4Other || '';
+      document.getElementById('q5TextInput').value = rec.q5Text || '';
+
+      renderHotspotOverlays();
+    }
+
+    function renderHotspotOverlays() {
+      const layer = document.getElementById('overlayLayer');
+      layer.innerHTML = '';
+      const rec = records[currentPage - 1];
+      if (!rec || rec.source === 'Googleフォーム') return;
+
+      const oxPct = (globalOffsetX / 1000) * 100;
+      const oyPct = (globalOffsetY / 1000) * 100;
+
+      const addBox = (box, isActive, onClickFn, titleText) => {
+        const div = document.createElement('div');
+        div.className = 'omr-hotspot' + (isActive ? ' active' : '');
+        div.style.left = `calc(${box.x * 100}% + ${oxPct}%)`;
+        div.style.top = `calc(${box.y * 100}% + ${oyPct}%)`;
+        div.style.width = `${box.w * 100}%`;
+        div.style.height = `${box.h * 100}%`;
+        div.title = titleText;
+        div.onclick = onClickFn;
+        layer.appendChild(div);
+      };
+
+      HOTSPOTS.gender.forEach(b => {
+        addBox(b, rec.gender === b.label, () => {
+          rec.gender = (rec.gender === b.label) ? '未記入' : b.label;
+          refreshEditorUI();
+          scheduleCloudSave();
+        }, `性別: ${b.label}`);
+      });
+
+      HOTSPOTS.residence.forEach(b => {
+        addBox(b, rec.residence === b.label, () => {
+          rec.residence = (rec.residence === b.label) ? '未記入' : b.label;
+          refreshEditorUI();
+          scheduleCloudSave();
+        }, `お住まい: ${b.label}`);
+      });
+
+      HOTSPOTS.q1.forEach(b => {
+        addBox(b, rec.q1.includes(b.idx), () => toggleMulti('q1', b.idx), `Q1: ${SCHEMA.q1[b.idx]}`);
+      });
+      HOTSPOTS.q2.forEach(b => {
+        addBox(b, rec.q2 === b.idx, () => toggleSingle('q2', b.idx), `Q2: ${SCHEMA.q2[b.idx]}`);
+      });
+      HOTSPOTS.q3.forEach(b => {
+        addBox(b, rec.q3 === b.idx, () => toggleSingle('q3', b.idx), `Q3: ${SCHEMA.q3[b.idx]}`);
+      });
+      HOTSPOTS.q4.forEach(b => {
+        addBox(b, rec.q4.includes(b.idx), () => toggleMulti('q4', b.idx), `Q4: ${SCHEMA.q4[b.idx]}`);
+      });
+    }
+
+    async function goPage(delta) {
+      if (!records.length) return;
+      const next = currentPage + delta;
+      if (next >= 1 && next <= totalPages) {
+        currentPage = next;
+        await renderCurrentPage();
+        scheduleCloudSave();
+      }
+    }
+
+    async function verifyAndNext() {
+      if (!records.length) return;
+      records[currentPage - 1].verified = true;
+      if (currentPage < totalPages) {
+        currentPage++;
+        await renderCurrentPage();
+        scheduleCloudSave();
+      } else {
+        refreshEditorUI();
+        await saveToCloudNow(false);
+        alert('🎉 全ページの確認が完了し、クラウドにも保存しました！「③ 四役報告用サマリー資料」または「📊 Excel出力」をご確認ください。');
+      }
+    }
+
+    function autoDetectCurrentPage() {
+      const canvas = document.getElementById('pdfCanvas');
+      if (!canvas.width || !records.length) return;
+      runOMROnCanvas(canvas, records[currentPage - 1]);
+      refreshEditorUI();
+      scheduleCloudSave();
+    }
+
+    function toggleCalibrationMode() {
+      const el = document.getElementById('calibControls');
+      el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function updateOffsets() {
+      globalOffsetY = parseInt(document.getElementById('offsetYSlider').value, 10) || 0;
+      globalOffsetX = parseInt(document.getElementById('offsetXSlider').value, 10) || 0;
+      document.getElementById('offsetYVal').textContent = globalOffsetY;
+      document.getElementById('offsetXVal').textContent = globalOffsetX;
+      renderHotspotOverlays();
+      scheduleCloudSave();
+    }
+
+    async function reRunAllPagesOMR() {
+      if (!pdfDoc) {
+        autoDetectCurrentPage();
+        return;
+      }
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+      for (let p = 1; p <= totalPages; p++) {
+        if (records[p - 1].verified || records[p - 1].source === 'Googleフォーム') continue;
+        const page = await pdfDoc.getPage(p);
+        const viewport = page.getViewport({ scale: 1.5 });
+        tempCanvas.width = viewport.width;
+        tempCanvas.height = viewport.height;
+        await page.render({ canvasContext: tempCtx, viewport }).promise;
+        runOMROnCanvas(tempCanvas, records[p - 1]);
+      }
+      await renderCurrentPage();
+      await saveToCloudNow(false);
+      alert('未確認ページに対して、微調整後の位置で自動再判定を行い、クラウドへ保存しました。');
+    }
+
+    // Keyboard shortcuts for ultra-fast verification
+    window.addEventListener('keydown', e => {
+      if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+      if (!document.getElementById('view-reader').classList.contains('active')) return;
+      if (e.key === 'ArrowRight' || e.key === 'Enter') {
+        e.preventDefault();
+        verifyAndNext();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        goPage(-1);
+      }
+    });
+
+    function toggleRecordExclude(idx, isExcluded) {
+      if (!records[idx]) return;
+      records[idx].excluded = !!isExcluded;
+      updateHeaderLoadedBadge();
+      renderRecordsTable();
+      scheduleCloudSave();
+    }
+
+    // TABLE VIEW RENDERING
+    function renderRecordsTable() {
+      const tbody = document.getElementById('recordsTableBody');
+      tbody.innerHTML = '';
+      records.forEach((r, idx) => {
+        const tr = document.createElement('tr');
+        if (r.excluded) tr.style.opacity = '0.48';
+
+        const sourceBadge = r.source === 'Googleフォーム'
+          ? `<span style="display:inline-block;background:#dcfce7;color:#166534;padding:2px 7px;border-radius:999px;font-weight:700;font-size:0.72rem;">🌐 Googleフォーム</span><div style="font-size:0.7rem;color:#64748b;margin-top:2px;">${escapeHtml(r.timestamp || '')}</div>`
+          : `<span style="display:inline-block;background:#e0f2fe;color:#0369a1;padding:2px 7px;border-radius:999px;font-weight:700;font-size:0.72rem;">📄 紙アンケート</span>`;
+
+        const statusBadge = r.excluded
+          ? '<span style="color:#dc2626;font-weight:700;">🚫 集計除外中</span>'
+          : (r.verified ? '<span style="color:#16a34a;font-weight:700;">✓ 確認済</span>' : '<span style="color:#d97706;">未確認</span>');
+
+        const testWarnHtml = r.testReason
+          ? `<div style="font-size:0.68rem;color:#b91c1c;background:#fef2f2;border:1px solid #fecaca;padding:1px 5px;border-radius:4px;margin-top:3px;">⚠️ ${escapeHtml(r.testReason)}</div>`
+          : '';
+
+        tr.innerHTML = `
+          <td><strong>${r.page}</strong></td>
+          <td>${sourceBadge}</td>
+          <td>
+            <div>${statusBadge}</div>
+            <label style="display:inline-flex;align-items:center;gap:4px;font-size:0.74rem;cursor:pointer;margin-top:3px;color:#475569;">
+              <input type="checkbox" ${r.excluded ? 'checked' : ''} onchange="toggleRecordExclude(${idx}, this.checked)" />
+              除外する
+            </label>
+            ${testWarnHtml}
+          </td>
+          <td>${r.age}</td>
+          <td>${r.gender}</td>
+          <td>${r.residence}</td>
+          <td>${r.q1.map(i => SCHEMA.q1[i]).join(' / ') || '-'}</td>
+          <td>${r.q2 !== null ? SCHEMA.q2[r.q2] : '-'}</td>
+          <td>${r.q3 !== null ? SCHEMA.q3[r.q3] : '-'}</td>
+          <td>${r.q4.map(i => SCHEMA.q4[i]).join(' / ') || '-'}</td>
+          <td>${escapeHtml(r.q4Other)}</td>
+          <td>${escapeHtml(r.q5Text)}</td>
+          <td><button class="btn btn-outline" style="padding:4px 8px;font-size:0.75rem;" onclick="jumpToPage(${idx + 1})">確認画面へ</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function jumpToPage(p) {
+      currentPage = p;
+      switchView('reader');
+      renderCurrentPage();
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+    }
+
+    // EXECUTIVE REPORT RENDERING (病院四役報告用：第三者データアナリスト検証済・飛躍ゼロ仕様)
+    function renderExecutiveReport() {
+      const valid = records.filter(r => !r.excluded);
+      const N = valid.length;
+      const budget = parseInt(document.getElementById('budgetInput')?.value, 10) || 214000;
+      document.getElementById('reportBudgetLabel').textContent = budget.toLocaleString();
+      document.getElementById('reportValidCount').textContent = N;
+      document.getElementById('kpiTotal').innerHTML = `${N}<span style="font-size:1rem; font-weight:600;"> 名</span>`;
+
+      if (N === 0) return;
+
+      const pct = (c, base = N) => base > 0 ? ((c / base) * 100).toFixed(1) : '0.0';
+      const yen = (amt) => amt ? Math.round(amt).toLocaleString() : '-';
+
+      // Attributes counts
+      const ageCounts = SCHEMA.ages.map(a => valid.filter(r => r.age === a).length);
+      const genderCounts = SCHEMA.genders.map(g => valid.filter(r => r.gender === g).length);
+      const resCounts = SCHEMA.residences.map(res => valid.filter(r => r.residence === res).length);
+
+      // Honest Cost Evaluation: Cost per survey respondent (all valid respondents, not just new awareness)
+      const costPerRespondent = Math.round(budget / N);
+      document.getElementById('kpiCityRatio').textContent =
+        `回答1名あたり直接対話単価: 約${yen(costPerRespondent)}円（市内${pct(resCounts[0])}% / 市外${pct(resCounts[1])}%）`;
+
+      // Q1 counts
+      const q1Counts = SCHEMA.q1.map((_, i) => valid.filter(r => r.q1.includes(i)).length);
+      // Q2 counts
+      const q2Counts = SCHEMA.q2.map((_, i) => valid.filter(r => r.q2 === i).length);
+      // Q3 counts
+      const q3Counts = SCHEMA.q3.map((_, i) => valid.filter(r => r.q3 === i).length);
+      // Q4 counts
+      const q4Counts = SCHEMA.q4.map((_, i) => valid.filter(r => r.q4.includes(i)).length);
+
+      // KPIs (Zero-leap representation)
+      const newKnownCount = q2Counts[2];
+      const nameOnlyCount = q2Counts[1];
+      document.getElementById('kpiNewKnown').innerHTML = `${pct(newKnownCount)}<span style="font-size:1rem;"> %</span>`;
+      document.getElementById('kpiNewKnownSub').textContent =
+        `初認知 ${newKnownCount}名 (${pct(newKnownCount)}%) ＋ 名前のみ既知 ${nameOnlyCount}名 (${pct(nameOnlyCount)}%)`;
+
+      const posIntentCount = q3Counts[0] + q3Counts[1];
+      document.getElementById('kpiPositiveIntent').innerHTML = `${pct(posIntentCount)}<span style="font-size:1rem;"> %</span>`;
+      document.getElementById('kpiIntentSub').textContent =
+        `ぜひ利用(第一選択) ${q3Counts[0]}名 (${pct(q3Counts[0])}%) ＋ 候補検討 ${q3Counts[1]}名 (${pct(q3Counts[1])}%)`;
+
+      let topQ1Idx = 0;
+      let minQ1Idx = 0;
+      q1Counts.forEach((c, i) => {
+        if (c > q1Counts[topQ1Idx]) topQ1Idx = i;
+        if (c < q1Counts[minQ1Idx]) minQ1Idx = i;
+      });
+      document.getElementById('kpiTopQ1').textContent = SCHEMA.q1[topQ1Idx];
+      document.getElementById('kpiTopQ1Sub').textContent = `${q1Counts[topQ1Idx]}名（回答者の ${pct(q1Counts[topQ1Idx])}%）が有益と評価`;
+
+      // Generate Rigorous Third-Party Analyst Executive Insights
+      // Rank Q4 themes (indices 0..4) for Rehab Dept Health Classes
+      const q4ThemeIndices = [0, 1, 2, 3, 4].sort((a, b) => q4Counts[b] - q4Counts[a]);
+      const topQ4Idx = q4ThemeIndices[0];
+      const secondQ4Idx = q4ThemeIndices[1];
+
+      // Cross segments
+      const firstTimers = valid.filter(r => r.q2 === 2);
+      const firstTimersPositive = firstTimers.filter(r => r.q3 === 0 || r.q3 === 1).length;
+      const nameOnlyTimers = valid.filter(r => r.q2 === 1);
+      const nameOnlyPositive = nameOnlyTimers.filter(r => r.q3 === 0 || r.q3 === 1).length;
+      const localResidents = valid.filter(r => r.residence === '八千代市内');
+      const localPositive = localResidents.filter(r => r.q3 === 0 || r.q3 === 1).length;
+      const commentCount = valid.filter(r => (r.q5Text && r.q5Text.trim()) || (r.q4Other && r.q4Other.trim())).length;
+
+      const insightsHtml = `
+        <li><strong>【Q1：今回の出展の出来評価・参加しての関心評価】</strong> 飲食や買い物客で賑わう総合産業祭（八千代どーんと祭）の中で、当院ブースの5企画のうち<strong>「${SCHEMA.q1[topQ1Idx]}」が最多（${q1Counts[topQ1Idx]}名・${pct(q1Counts[topQ1Idx])}%）</strong>の評価を獲得し、お祭り来場者の足を止めて参加満足を生む主軸企画として高く機能しました。なお、得票数が相対的に少ない企画（例：「${SCHEMA.q1[minQ1Idx]}」${q1Counts[minQ1Idx]}名）は、短時間で測れる測定系と1人あたり時間を要する相談系の<strong>回転率（体験母数）の差</strong>が影響しているため、次ページ【検証③】の「悩み保有者の一致率」と併せて出来栄えを評価しています。</li>
+        <li><strong>【Q2・Q3：病院認知度の現状把握とブランディング調査（出展費用 ${(budget/10000).toFixed(1)}万円／対話単価 約${yen(costPerRespondent)}円）】</strong> 会場の「八千代総合運動公園（萱田・八千代中央/村上圏域）」は当院所在地（米本）から約2.5km離れた市中心部であり、普段当院の前を通らない市民層における<strong>「リアルな認知度の定点観測」</strong>として重要な意味を持ちます。現状は<strong>「よく知っている＋名前や場所は知っている」が計${pct(q2Counts[0]+q2Counts[1])}%（${q2Counts[0]+q2Counts[1]}名）、「今日初めて知った」が${pct(newKnownCount)}%（${newKnownCount}名）</strong>でした。さらにブランディング調査（Q3）では、<strong>全体の${pct(posIntentCount)}%（${posIntentCount}名）が万が一の際の入院リハ利用に肯定的（ぜひ利用${pct(q3Counts[0])}%＋候補検討${pct(q3Counts[1])}%）</strong>であり、特に「今日初めて知った層」の<strong>${pct(firstTimersPositive, firstTimers.length)}%</strong>、「名前だけ知っていた層」の<strong>${pct(nameOnlyPositive, nameOnlyTimers.length)}%</strong>がブース参加を通じて「入院してリハビリを行う専門病院」としてのブランド価値・信頼を獲得したことが実証されました。</li>
+        <li><strong>【Q4：今後リハ部で「地域の健康教室」を行う際のテーマ優先順位付け】</strong> どーんと祭の会場は一般駐車場がなく駅から徒歩約15分を要するため、来場回答者は<strong>「自力で外出・歩行でき、健康に関心がある層（＝今後リハ部が地域の健康教室を開催した際に実際に足を運んでくれるターゲット母集団そのもの）」</strong>です。この層における健康課題の<strong>第1優先は「${SCHEMA.q4[topQ4Idx]}」（${q4Counts[topQ4Idx]}名・${pct(q4Counts[topQ4Idx])}%）、第2優先は「${SCHEMA.q4[secondQ4Idx]}」（${q4Counts[secondQ4Idx]}名・${pct(q4Counts[secondQ4Idx])}%）</strong>であり、下表の「八千代市内在住者」に絞った順位とあわせて、リハ部（PT・OT・ST）が展開する健康教室の明確な優先順位エビデンスとなります。</li>
+        <li><strong>【Q5：来年の「どーんと祭」をより良い出展にするための改善材料】</strong> 自由記載（Q5・計${commentCount}件）の生の声と、Q4で浮き彫りになった「今回単独ブースがなかった潜在関心テーマ（例：物忘れ・認知機能 ${q4Counts[1]}名・${pct(q4Counts[1])}%）」や【検証③】の「悩みがあるのに当日未体験だった層」を掛け合わせることで、来年のどーんと祭でさらに参加者の関心を惹きつけるブース改善案・新企画を具体化できます。</li>
+      `;
+      document.getElementById('executiveInsights').innerHTML = insightsHtml;
+
+      // Render Charts
+      drawChart('chartAge', 'bar', SCHEMA.ages, ageCounts, '#2563eb');
+      drawChart('chartGender', 'doughnut', SCHEMA.genders, genderCounts, ['#0284c7', '#e11d48', '#94a3b8']);
+      drawChart('chartResidence', 'doughnut', SCHEMA.residences, resCounts, ['#16a34a', '#f59e0b', '#94a3b8']);
+      drawChart('chartQ1', 'bar', SCHEMA.q1, q1Counts, '#0284c7', true);
+      drawChart('chartQ4', 'bar', SCHEMA.q4, q4Counts, '#0d9488', true);
+      drawChart('chartQ2', 'doughnut', ['よく知っている', '名前・場所は知っている', '今日初めて知った'], q2Counts, ['#1e40af', '#3b82f6', '#f59e0b']);
+      drawChart('chartQ3', 'doughnut', ['ぜひ利用したい', '候補として検討したい', '他院を選ぶ・わからない'], q3Counts, ['#16a34a', '#0ea5e9', '#94a3b8']);
+
+      // Summary Tables
+      document.getElementById('tableQ1Wrap').innerHTML = buildSummaryTable(SCHEMA.q1, q1Counts, N);
+      document.getElementById('tableQ4Wrap').innerHTML = buildQ4RehabPriorityTable(valid, q4Counts, N);
+      document.getElementById('tableQ2Wrap').innerHTML = buildSummaryTable(SCHEMA.q2, q2Counts, N);
+      document.getElementById('tableQ3Wrap').innerHTML = buildSummaryTable(SCHEMA.q3, q3Counts, N);
+
+      // Cross Tabulation 1: Residence x Q2
+      document.getElementById('crossResidenceQ2').innerHTML = buildCrossTable(
+        valid,
+        ['八千代市内', '八千代市外'],
+        r => r.residence,
+        ['よく知っている', '名前・場所知ってる', '今日初めて知った'],
+        (r, colIdx) => r.q2 === colIdx
+      );
+
+      // Cross Tabulation 2: Q2 x Q3
+      document.getElementById('crossQ2Q3').innerHTML = buildCrossTable(
+        valid,
+        ['よく知っている', '名前・場所知ってる', '今日初めて知った'],
+        r => r.q2 !== null ? ['よく知っている', '名前・場所知ってる', '今日初めて知った'][r.q2] : '未回答',
+        ['ぜひ利用したい', '候補として検討', '他院・わからない'],
+        (r, colIdx) => r.q3 === colIdx
+      );
+
+      // Cross Tabulation 3: Individual-level Q4 (Health Concern) x Q1 (Content Experienced) Target Capture Matrix
+      document.getElementById('gapMatrixQ4Q1').innerHTML = buildTargetCaptureMatrix(valid, q1Counts, q4Counts, N);
+
+      // Free Comments
+      const comments = valid.filter(r => (r.q5Text && r.q5Text.trim()) || (r.q4Other && r.q4Other.trim()));
+      if (comments.length === 0) {
+        document.getElementById('freeCommentsList').innerHTML = '<p style="font-size:0.85rem; color:var(--muted);">自由記載の回答はありません。</p>';
+      } else {
+        let html = `<table class="summary-table"><thead><tr><th style="width:70px;">用紙No.</th><th style="width:160px;">属性</th><th style="width:160px;">本人の健康関心(Q4)</th><th>区分</th><th>記載内容</th></tr></thead><tbody>`;
+        comments.forEach(r => {
+          const attr = `${r.age} / ${r.gender} / ${r.residence}`;
+          const q4List = r.q4.map(i => SCHEMA.q4[i]).join('・') || 'なし';
+          if (r.q4Other && r.q4Other.trim()) {
+            html += `<tr><td style="text-align:center;">No.${r.page}</td><td>${attr}</td><td style="font-size:0.78rem;">${q4List}</td><td>Q4 その他健康課題</td><td>${escapeHtml(r.q4Other)}</td></tr>`;
+          }
+          if (r.q5Text && r.q5Text.trim()) {
+            html += `<tr><td style="text-align:center;">No.${r.page}</td><td>${attr}</td><td style="font-size:0.78rem;">${q4List}</td><td><strong>Q5 来年への期待</strong></td><td>${escapeHtml(r.q5Text)}</td></tr>`;
+          }
+        });
+        html += `</tbody></table>`;
+        document.getElementById('freeCommentsList').innerHTML = html;
+      }
+    }
+
+    // Q4 Rehab Department Community Health Class Priority Table
+    function buildQ4RehabPriorityTable(valid, q4Counts, N) {
+      const localValid = valid.filter(r => r.residence === '八千代市内');
+      const localN = localValid.length;
+      const pct = (c, base) => base > 0 ? ((c / base) * 100).toFixed(1) : '0.0';
+
+      const rehabMapping = [
+        'PT主力（転倒予防・筋力/バランス教室）',
+        'OT・ST主力（コグニサイズ・脳活性/認知症予防教室）',
+        'ST・管理栄養士連携（フレイル・嚥下/栄養教室）',
+        '薬剤部連携（服薬管理・ポリファーマシー講座）',
+        'リハ部×地域連携室連携（介助方法・住環境/ACP講座）',
+        '-',
+        '自由記述参照'
+      ];
+
+      // Rank actionable themes (indices 0..4) by overall count (tie-breaker: local count)
+      const rankedThemeIndices = [0, 1, 2, 3, 4].sort((a, b) => {
+        if (q4Counts[b] !== q4Counts[a]) return q4Counts[b] - q4Counts[a];
+        const la = localValid.filter(r => r.q4.includes(a)).length;
+        const lb = localValid.filter(r => r.q4.includes(b)).length;
+        return lb - la;
+      });
+
+      let html = `<table class="summary-table"><thead><tr>
+        <th style="width:62px;">教室優先度</th>
+        <th>健康課題（Q4選択肢）</th>
+        <th style="width:82px;">全体回答</th>
+        <th style="width:95px;">うち市内在住<br><span style="font-weight:400;font-size:0.7rem;">(実参加圏:${localN}名)</span></th>
+        <th>リハ部・健康教室の担当領域案</th>
+      </tr></thead><tbody>`;
+
+      SCHEMA.q4.forEach((label, idx) => {
+        const totalC = q4Counts[idx];
+        const localC = localValid.filter(r => r.q4.includes(idx)).length;
+        const rankPos = rankedThemeIndices.indexOf(idx);
+        let rankBadge = '-';
+        if (rankPos === 0 && totalC > 0) rankBadge = '<strong style="color:#dc2626;">第1優先</strong>';
+        else if (rankPos === 1 && totalC > 0) rankBadge = '<strong style="color:#d97706;">第2優先</strong>';
+        else if (rankPos === 2 && totalC > 0) rankBadge = '<strong style="color:#0284c7;">第3優先</strong>';
+        else if (rankPos >= 3 && totalC > 0) rankBadge = `第${rankPos + 1}位`;
+
+        html += `<tr>
+          <td style="text-align:center;">${rankBadge}</td>
+          <td><strong>${label}</strong></td>
+          <td class="num"><strong>${totalC}</strong>名 <span style="font-size:0.75rem;color:var(--muted);">(${pct(totalC, N)}%)</span></td>
+          <td class="num">${localC}名 <span style="font-size:0.75rem;color:var(--muted);">(${pct(localC, localN)}%)</span></td>
+          <td style="font-size:0.76rem;color:#334155;">${rehabMapping[idx]}</td>
+        </tr>`;
+      });
+
+      html += `</tbody></table>`;
+      return html;
+    }
+
+    // Individual-level Cross Tabulation: Among people with Health Concern Q4[x], how many actually found Q1[y] helpful?
+    function buildTargetCaptureMatrix(valid, q1Counts, q4Counts, N) {
+      const pct = (c, base) => base > 0 ? ((c / base) * 100).toFixed(1) : '0.0';
+      const pairs = [
+        { dept: 'リハビリ部門', type: '測定型(高回転)', q4Idx: 0, q4Name: '足腰の衰え・転倒', q1Idx: 0, q1Name: '筋肉量測定' },
+        { dept: '栄養部門', type: '指導・案内型', q4Idx: 2, q4Name: '食事・栄養バランス', q1Idx: 3, q1Name: '栄養レッスン' },
+        { dept: '薬剤部門', type: '個別相談型(じっくり)', q4Idx: 3, q4Name: '薬の飲み方', q1Idx: 2, q1Name: 'お薬相談' },
+        { dept: '地域連携・相談部門', type: '個別案内型(じっくり)', q4Idx: 4, q4Name: '将来の介護や終活', q1Idx: 4, q1Name: '人生会議（終活）の案内' },
+        { dept: '検査・測定部門', type: '測定型(高回転)', q4Idx: null, q4Name: '（特定のQ4選択肢なし／全般関心）', q1Idx: 1, q1Name: '血管年齢測定' },
+        { dept: '【リハ部・未充足領域】', type: '当日単独企画なし', q4Idx: 1, q4Name: '物忘れ・認知機能', q1Idx: null, q1Name: '（対応する単独ブースなし）' }
+      ];
+
+      let html = `<table class="summary-table"><thead><tr>
+        <th>部門（運営特性）</th>
+        <th>① 該当する悩みを持つ来場者数（Q4）</th>
+        <th>② 当日企画を有益と評価した総数（Q1）</th>
+        <th>③ 個人単位のターゲット捕捉数・捕捉率<br><span style="font-weight:400;font-size:0.75rem;">（①の悩み保有者のうち②を体験・評価した本人）</span></th>
+        <th>データアナリストによる客観評価・次年度＆リハ部健康教室への提言</th>
+      </tr></thead><tbody>`;
+
+      pairs.forEach(p => {
+        const hasQ4 = p.q4Idx !== null;
+        const hasQ1 = p.q1Idx !== null;
+        const q4Group = hasQ4 ? valid.filter(r => r.q4.includes(p.q4Idx)) : [];
+        const q4Count = hasQ4 ? q4Group.length : null;
+        const q1Count = hasQ1 ? q1Counts[p.q1Idx] : null;
+
+        let bothCount = null;
+        let missedCount = null;
+        let captureRate = null;
+        let captureHtml = '-';
+        let adviceHtml = '';
+
+        if (hasQ4 && hasQ1) {
+          bothCount = q4Group.filter(r => r.q1.includes(p.q1Idx)).length;
+          missedCount = q4Count - bothCount;
+          captureRate = q4Count > 0 ? Number(pct(bothCount, q4Count)) : 0;
+          captureHtml = `<strong>${bothCount} 名</strong> / ${q4Count}名中<br><span style="color:var(--primary);font-weight:700;">（捕捉率: ${captureRate.toFixed(1)}%）</span><br><span style="font-size:0.75rem;color:var(--muted);">※未体験(取りこぼし): ${missedCount}名</span>`;
+
+          if (captureRate >= 50) {
+            adviceHtml = `<strong style="color:#16a34a;">【ターゲット捕捉・良好】</strong> 「${p.q4Name}」に悩む来場者の半数以上（${captureRate.toFixed(1)}%）を確実に「${p.q1Name}」へ誘導できています。イベントでの体験満足度が高いため、ここから<strong>リハ部主催の「地域健康教室」への参加案内チラシを手渡す導線</strong>が最も効果的です。`;
+          } else if (q4Count >= Math.max(3, N * 0.15) && captureRate < 50) {
+            adviceHtml = `<strong style="color:#d97706;">【ブース内誘導の改善余地（潜在客の取りこぼしあり）】</strong> 当日「${p.q4Name}」に関心がある来場者が${q4Count}名いたものの、実際に体験・評価に至ったのは${bothCount}名（残り<strong>${missedCount}名は来場していたのに未体験</strong>）でした。お祭り会場では時間制約で体験できなかった層が多いため、<strong>独立した「地域健康教室」として別日開催すれば高い集客が見込めます</strong>。`;
+          } else {
+            adviceHtml = `<span style="color:#475569;">【実対応人数と併せた効率評価】</span> ${p.type}のため、当日の実対応人数（分母）と照らし合わせて人員数を適正化。測定ブース体験者へのセット案内が有効です。`;
+          }
+        } else if (!hasQ4 && hasQ1) {
+          captureHtml = `<span style="font-size:0.78rem;color:var(--muted);">全回答者の <strong>${pct(q1Count, N)}%</strong> が評価</span>`;
+          adviceHtml = `<strong style="color:#0284c7;">【広範な集客フック（入口機能）】</strong> 特定の疾患不安がない層も含め、ブース立ち寄りのきっかけ（${q1Count}名が評価）として機能。ここで接点を持った来場者に「リハ部・健康教室」の案内を配布する入口として有効です。`;
+        } else if (hasQ4 && !hasQ1) {
+          captureHtml = `<span style="color:#dc2626;font-weight:700;">未充足ニーズ: ${q4Count}名 (${pct(q4Count, N)}%)</span>`;
+          adviceHtml = `<strong style="color:#dc2626;">【リハ部・健康教室（OT/ST領域）および次年度企画の最有力候補】</strong> 当日単独ブースがなかったにも関わらず、来場者の <strong>${pct(q4Count, N)}%（${q4Count}名）が「${p.q4Name}」に不安</strong>を抱えています。リハ部主催の「認知症予防・脳活性教室」のテーマ、および次年度の新規コーナーとして客観的根拠のある需要です。`;
+        }
+
+        html += `<tr>
+          <td><strong>${p.dept}</strong><br><span style="font-size:0.75rem;color:var(--muted);">${p.type}</span></td>
+          <td>${p.q4Name}${q4Count !== null ? `<br><strong>${q4Count}名</strong> (${pct(q4Count, N)}%)` : ''}</td>
+          <td>${p.q1Name}${q1Count !== null ? `<br><strong>${q1Count}名</strong> (${pct(q1Count, N)}%)` : ''}</td>
+          <td class="num" style="text-align:center;">${captureHtml}</td>
+          <td style="font-size:0.8rem;">${adviceHtml}</td>
+        </tr>`;
+      });
+
+      html += `</tbody></table>`;
+      return html;
+    }
+
+    function buildSummaryTable(labels, counts, total) {
+      let html = `<table class="summary-table"><thead><tr><th>選択肢</th><th style="width:80px;">回答数</th><th style="width:85px;">割合(%)</th></tr></thead><tbody>`;
+      labels.forEach((l, i) => {
+        const c = counts[i];
+        const p = total > 0 ? ((c / total) * 100).toFixed(1) : '0.0';
+        html += `<tr><td>${l}</td><td class="num"><strong>${c}</strong> 名</td><td class="num">${p}%</td></tr>`;
+      });
+      html += `</tbody></table>`;
+      return html;
+    }
+
+    function buildCrossTable(validRecords, rowLabels, rowGetter, colLabels, colMatcher) {
+      let html = `<table class="summary-table"><thead><tr><th>区分</th>`;
+      colLabels.forEach(c => { html += `<th>${c}</th>`; });
+      html += `<th>計</th></tr></thead><tbody>`;
+
+      rowLabels.forEach(rLabel => {
+        const sub = validRecords.filter(r => rowGetter(r) === rLabel);
+        const subN = sub.length;
+        html += `<tr><td><strong>${rLabel}</strong></td>`;
+        colLabels.forEach((_, cIdx) => {
+          const cnt = sub.filter(r => colMatcher(r, cIdx)).length;
+          const p = subN > 0 ? ((cnt / subN) * 100).toFixed(1) : '0.0';
+          html += `<td class="num">${cnt}名 <span style="color:var(--muted);font-size:0.78rem;">(${p}%)</span></td>`;
+        });
+        html += `<td class="num"><strong>${subN}名</strong></td></tr>`;
+      });
+      html += `</tbody></table>`;
+      return html;
+    }
+
+    function drawChart(canvasId, type, labels, data, colors, horizontal = false) {
+      if (chartInstances[canvasId]) {
+        chartInstances[canvasId].destroy();
+      }
+      const ctx = document.getElementById(canvasId).getContext('2d');
+      chartInstances[canvasId] = new Chart(ctx, {
+        type,
+        data: {
+          labels,
+          datasets: [{
+            data,
+            backgroundColor: colors,
+            borderRadius: type === 'bar' ? 5 : 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: horizontal ? 'y' : 'x',
+          plugins: {
+            legend: {
+              display: type === 'doughnut',
+              position: 'right',
+              labels: { boxWidth: 12, font: { size: 11 } }
+            }
+          },
+          scales: type === 'bar' ? {
+            x: { beginAtZero: true, ticks: { precision: 0 } },
+            y: { beginAtZero: true, ticks: { precision: 0 } }
+          } : {}
+        }
+      });
+    }
+
+    // EXCEL (.xlsx) & CSV EXPORT
+    function exportToExcel() {
+      if (!records.length) {
+        alert('まだアンケートデータが読み込まれていません。');
+        return;
+      }
+      const valid = records.filter(r => !r.excluded);
+      const localValid = valid.filter(r => r.residence === '八千代市内');
+      const budget = parseInt(document.getElementById('budgetInput')?.value, 10) || 214000;
+      const wb = XLSX.utils.book_new();
+
+      // Sheet 1: Raw Data (1 row per respondent, plus 0/1 flags for easy Pivot Table in Excel)
+      const rawRows = valid.map(r => {
+        const row = {
+          '通しNo.': r.page,
+          '回答経路': r.source === 'Googleフォーム' ? 'Googleフォーム(Web)' : '紙アンケート',
+          '回答日時': r.timestamp || '-',
+          '確認状態': r.verified ? '確認済' : '自動読取',
+          '年齢': r.age,
+          '性別': r.gender,
+          'お住まい': r.residence,
+          'Q1_参考になった内容(まとめ)': r.q1.map(i => SCHEMA.q1[i]).join(' / '),
+          'Q2_当院の認知度': r.q2 !== null ? SCHEMA.q2[r.q2] : '未回答',
+          'Q3_今後の利用意向': r.q3 !== null ? SCHEMA.q3[r.q3] : '未回答',
+          'Q4_健康で気になること(まとめ)': r.q4.map(i => SCHEMA.q4[i]).join(' / '),
+          'Q4_その他自由記述': r.q4Other || '',
+          'Q5_来年のどーんと祭で期待する内容': r.q5Text || ''
+        };
+        SCHEMA.q1.forEach((label, i) => { row[`Q1_${label}`] = r.q1.includes(i) ? 1 : 0; });
+        SCHEMA.q4.forEach((label, i) => { row[`Q4_${label}`] = r.q4.includes(i) ? 1 : 0; });
+        return row;
+      });
+      const wsRaw = XLSX.utils.json_to_sheet(rawRows);
+      XLSX.utils.book_append_sheet(wb, wsRaw, '回答データ一覧');
+
+      // Sheet 2: Executive Summary Tables & Honest Cost / Cross-Tabulation for Four Executives
+      const N = valid.length;
+      const localN = localValid.length;
+      const paperN = valid.filter(r => r.source !== 'Googleフォーム').length;
+      const webN = valid.filter(r => r.source === 'Googleフォーム').length;
+      const pct = (c, base = N) => base > 0 ? Number(((c / base) * 100).toFixed(1)) : 0;
+      const newKnown = valid.filter(r => r.q2 === 2).length;
+      const nameOnly = valid.filter(r => r.q2 === 1).length;
+      const posIntent = valid.filter(r => r.q3 === 0 || r.q3 === 1).length;
+
+      const rehabMapping = [
+        'PT主力（転倒予防・筋力/バランス教室）',
+        'OT・ST主力（コグニサイズ・脳活性/認知症予防教室）',
+        'ST・管理栄養士連携（フレイル・嚥下/栄養教室）',
+        '薬剤部連携（服薬管理講座）',
+        'リハ部×地域連携室連携（介助方法・住環境/ACP講座）',
+        '-',
+        '自由記述参照'
+      ];
+
+      const summaryAoA = [
+        ['八千代リハビリテーション病院「どーんと祭」アンケート集計・客観効果検証表（四役報告用）'],
+        ['有効回答総数（紙＋Web合算）', N, `名（内訳：紙アンケート ${paperN}名 ／ Googleフォーム ${webN}名）`],
+        ['出展総費用（予算）', budget, '円'],
+        ['回答者1名あたり直接対話コスト（全体ベース）', N > 0 ? Math.round(budget / N) : 0, '円/名（※未記入立ち寄り客・同伴家族を含めればさらに低単価）'],
+        ['新規認知獲得数（今日初めて知った）', newKnown, `名（${pct(newKnown)}%）`],
+        ['機能深耕対象数（名前・場所のみ知っていた）', nameOnly, `名（${pct(nameOnly)}%）`],
+        ['転院候補としての第一選択・検討意向数（ぜひ＋候補検討）', posIntent, `名（${pct(posIntent)}% ※急性期MSW紹介時の指名・承諾土壌）`],
+        [],
+        ['【基本属性】年齢層', '回答数(名)', '構成比(%)'],
+        ...SCHEMA.ages.map(a => { const c = valid.filter(r => r.age === a).length; return [a, c, pct(c)]; }),
+        [],
+        ['【基本属性】性別', '回答数(名)', '構成比(%)'],
+        ...SCHEMA.genders.map(g => { const c = valid.filter(r => r.gender === g).length; return [g, c, pct(c)]; }),
+        [],
+        ['【基本属性】お住まい', '回答数(名)', '構成比(%)'],
+        ...SCHEMA.residences.map(res => { const c = valid.filter(r => r.residence === res).length; return [res, c, pct(c)]; }),
+        [],
+        ['【Q1】本日参考になった内容（体験インパクト指標）', '回答数(名)', '回答者比(%)'],
+        ...SCHEMA.q1.map((l, i) => { const c = valid.filter(r => r.q1.includes(i)).length; return [l, c, pct(c)]; }),
+        [],
+        ['【Q2】当院の認知度（地域浸透度・新規リーチ指標）', '回答数(名)', '構成比(%)'],
+        ...SCHEMA.q2.map((l, i) => { const c = valid.filter(r => r.q2 === i).length; return [l, c, pct(c)]; }),
+        [],
+        ['【Q3】ご家族が入院リハビリを必要とした際の利用意向（転院指名・承諾確度）', '回答数(名)', '構成比(%)'],
+        ...SCHEMA.q3.map((l, i) => { const c = valid.filter(r => r.q3 === i).length; return [l, c, pct(c)]; }),
+        [],
+        ['【Q4】リハビリテーション部「地域健康教室」テーマ優先順位・健康課題集計', '全体回答数(名)', '全体回答者比(%)', 'うち八千代市内在住者(名)', '市内在住者比(%)', 'リハ部・健康教室の担当領域案'],
+        ...SCHEMA.q4.map((l, i) => {
+          const c = valid.filter(r => r.q4.includes(i)).length;
+          const lc = localValid.filter(r => r.q4.includes(i)).length;
+          return [l, c, pct(c, N), lc, pct(lc, localN), rehabMapping[i]];
+        }),
+        [],
+        ['【個人単位クロス集計】健康課題保有者（Q4）の当日企画（Q1）ターゲット捕捉率'],
+        ['健康課題（Q4）', '課題保有者数(名)', '対応する当日企画（Q1）', 'うち当日体験・評価した人数(名)', 'ターゲット捕捉率(%)', '当日未体験（取りこぼし人数）'],
+        ...[
+          { q4Idx: 0, q4Name: '足腰の衰え・転倒', q1Idx: 0, q1Name: '筋肉量測定' },
+          { q4Idx: 2, q4Name: '食事・栄養バランス', q1Idx: 3, q1Name: '栄養レッスン' },
+          { q4Idx: 3, q4Name: '薬の飲み方', q1Idx: 2, q1Name: 'お薬相談' },
+          { q4Idx: 4, q4Name: '将来の介護や終活', q1Idx: 4, q1Name: '人生会議（終活）の案内' }
+        ].map(item => {
+          const g = valid.filter(r => r.q4.includes(item.q4Idx));
+          const both = g.filter(r => r.q1.includes(item.q1Idx)).length;
+          return [item.q4Name, g.length, item.q1Name, both, pct(both, g.length), g.length - both];
+        })
+      ];
+      const wsSum = XLSX.utils.aoa_to_sheet(summaryAoA);
+      XLSX.utils.book_append_sheet(wb, wsSum, '四役報告用_客観分析・集計表');
+
+      XLSX.writeFile(wb, `八千代リハビリテーション病院_アンケート集計結果_${new Date().toISOString().slice(0,10)}.xlsx`);
+    }
+
+    function exportToCSV() {
+      if (!records.length) {
+        alert('まだアンケートデータが読み込まれていません。');
+        return;
+      }
+      const valid = records.filter(r => !r.excluded);
+      const headers = ['通しNo.', '回答経路', '回答日時', '確認状態', '年齢', '性別', 'お住まい', 'Q1_参考になった内容', 'Q2_当院の認知度', 'Q3_今後の利用意向', 'Q4_健康で気になること', 'Q4_その他記述', 'Q5_来年期待する内容'];
+      const rows = valid.map(r => [
+        r.page,
+        r.source === 'Googleフォーム' ? 'Googleフォーム(Web)' : '紙アンケート',
+        r.timestamp || '',
+        r.verified ? '確認済' : '自動読取',
+        r.age,
+        r.gender,
+        r.residence,
+        r.q1.map(i => SCHEMA.q1[i]).join(' / '),
+        r.q2 !== null ? SCHEMA.q2[r.q2] : '',
+        r.q3 !== null ? SCHEMA.q3[r.q3] : '',
+        r.q4.map(i => SCHEMA.q4[i]).join(' / '),
+        r.q4Other || '',
+        r.q5Text || ''
+      ]);
+      const csvContent = '\uFEFF' + [headers, ...rows].map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `アンケート回答一覧_${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+    }
+
+    function updateHeaderLoadedBadge() {
+      const badge = document.getElementById('loadedBadge');
+      if (!badge) return;
+      if (!records || !records.length) {
+        badge.textContent = 'データ未読込';
+        return;
+      }
+      const verifiedCount = records.filter(r => r.verified && !r.excluded).length;
+      const activeCount = records.filter(r => !r.excluded).length;
+      const paperCount = records.filter(r => !r.excluded && r.source !== 'Googleフォーム').length;
+      const webCount = records.filter(r => !r.excluded && r.source === 'Googleフォーム').length;
+      badge.textContent = `全 ${records.length} 件 (有効:${activeCount} [紙:${paperCount}/Web:${webCount}] / 確認済:${verifiedCount})`;
+    }
+
+    // ============================================================================
+    // ☁️ クラウド自動記憶・複数PC間リアルタイム同期エンジン (自宅PC ⇔ 職場PC)
+    // ============================================================================
+    const LOCAL_STORAGE_KEY = 'yachiyo_survey_cloud_backup_v1';
+    const IMG_CHUNK_SIZE = 15; // 15ページごとに画像チャンク分割して高速クラウド保存
+    let cloudSaveTimer = null;
+    let isCloudSaving = false;
+
+    function setCloudBadge(text, bg = '#065f46', color = '#d1fae5', border = '#10b981') {
+      const el = document.getElementById('cloudStatusBadge');
+      if (!el) return;
+      el.textContent = text;
+      el.style.background = bg;
+      el.style.color = color;
+      el.style.borderColor = border;
+    }
+
+    function saveToLocalStorageBackup() {
+      try {
+        const budget = parseInt(document.getElementById('budgetInput')?.value, 10) || 214000;
+        const payload = {
+          records,
+          currentPage,
+          globalOffsetX,
+          globalOffsetY,
+          budget,
+          updatedAt: new Date().toISOString()
+        };
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(payload));
+      } catch (e) {
+        // Ignore storage quota errors
+      }
+    }
+
+    function scheduleCloudSave() {
+      saveToLocalStorageBackup();
+      setCloudBadge('⏳ クラウド自動記憶中...', '#92400e', '#fef3c7', '#f59e0b');
+      if (cloudSaveTimer) clearTimeout(cloudSaveTimer);
+      cloudSaveTimer = setTimeout(() => {
+        saveToCloudNow(false);
+      }, 650);
+    }
+
+    async function saveToCloudNow(showManualAlert = false) {
+      if (!records || records.length === 0) {
+        if (showManualAlert) alert('保存するアンケートデータがまだありません。');
+        return;
+      }
+      saveToLocalStorageBackup();
+      if (cloudSaveTimer) {
+        clearTimeout(cloudSaveTimer);
+        cloudSaveTimer = null;
+      }
+      isCloudSaving = true;
+      setCloudBadge('☁️ クラウドへ保存中...', '#1e40af', '#dbeafe', '#60a5fa');
+
+      const budget = parseInt(document.getElementById('budgetInput')?.value, 10) || 214000;
+      const maxPageWithImg = Object.keys(pageImages).reduce((m, k) => Math.max(m, parseInt(k, 10) || 0), 0);
+      const maxImageChunk = maxPageWithImg > 0 ? Math.floor((maxPageWithImg - 1) / IMG_CHUNK_SIZE) : -1;
+
+      // Sanitize records (keep lightweight metadata)
+      const cleanRecords = records.map((r, i) => ({
+        page: i + 1,
+        source: r.source || '紙アンケート',
+        timestamp: r.timestamp || '',
+        verified: !!r.verified,
+        excluded: !!r.excluded,
+        testReason: r.testReason || '',
+        age: r.age || '未記入',
+        gender: r.gender || '未記入',
+        residence: r.residence || '未記入',
+        q1: Array.isArray(r.q1) ? r.q1 : [],
+        q2: typeof r.q2 === 'number' ? r.q2 : null,
+        q3: typeof r.q3 === 'number' ? r.q3 : null,
+        q4: Array.isArray(r.q4) ? r.q4 : [],
+        q4Other: r.q4Other || '',
+        q5Text: r.q5Text || '',
+        pdfDocIdx: typeof r.pdfDocIdx === 'number' ? r.pdfDocIdx : 0,
+        pdfPage: typeof r.pdfPage === 'number' ? r.pdfPage : (i + 1)
+      }));
+
+      try {
+        const resp = await fetch('/api/cloud_sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            key: 'main',
+            data: {
+              records: cleanRecords,
+              currentPage,
+              globalOffsetX,
+              globalOffsetY,
+              budget,
+              maxImageChunk
+            }
+          })
+        });
+        const json = await resp.json();
+        if (!resp.ok || !json.ok) {
+          throw new Error(json.error || `HTTP ${resp.status}`);
+        }
+        const timeStr = new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        setCloudBadge(`☁️ クラウド記憶済 (${timeStr})`, '#065f46', '#d1fae5', '#10b981');
+        if (showManualAlert) {
+          alert(`☁️ クラウドへ現在の作業データ（全${records.length}件・現在 ${currentPage} 枚目）を保存しました！\n職場のPCや別のPCから同じURLを開くだけで、そのまま続きから作業できます。`);
+        }
+      } catch (err) {
+        console.warn('Cloud save fallback to local:', err);
+        setCloudBadge('💾 PC内保存済 (オンライン時に自動同期)', '#475569', '#f1f5f9', '#94a3b8');
+        if (showManualAlert) {
+          alert(`クラウド通信エラー（PC内には保存済みです）：${err.message}\n※ 公開URL（Vercel上）で開いているかご確認ください。`);
+        }
+      } finally {
+        isCloudSaving = false;
+      }
+    }
+
+    // ページ縮小画像を15枚単位のチャンクでクラウドにバックグラウンド保存（別PCでPDFファイル無しでも目視確認可能にする）
+    async function uploadPageImageChunks(pageNumbers) {
+      if (!pageNumbers || !pageNumbers.length) return;
+      const chunkMap = {};
+      pageNumbers.forEach(pNo => {
+        if (!pageImages[pNo]) return;
+        const cIdx = Math.floor((pNo - 1) / IMG_CHUNK_SIZE);
+        if (!chunkMap[cIdx]) chunkMap[cIdx] = {};
+        chunkMap[cIdx][pNo] = pageImages[pNo];
+      });
+
+      const chunkIndices = Object.keys(chunkMap).map(Number).sort((a, b) => a - b);
+      for (let i = 0; i < chunkIndices.length; i++) {
+        const cIdx = chunkIndices[i];
+        setCloudBadge(`☁️ 用紙画像をクラウド同期中 (${i + 1}/${chunkIndices.length})...`, '#1e40af', '#dbeafe', '#60a5fa');
+        try {
+          await fetch('/api/cloud_sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              key: `img_chunk_${cIdx}`,
+              data: chunkMap[cIdx]
+            })
+          });
+        } catch (e) {
+          console.warn(`Image chunk ${cIdx} upload skipped:`, e);
+        }
+      }
+      // 最後にmainのmaxImageChunkを更新
+      await saveToCloudNow(false);
+    }
+
+    async function fetchImageChunkFromCloud(cIdx) {
+      try {
+        const resp = await fetch(`/api/cloud_sync?key=img_chunk_${cIdx}&t=${Date.now()}`, { cache: 'no-store' });
+        if (!resp.ok) return false;
+        const json = await resp.json();
+        if (json.ok && json.exists && json.cloudData) {
+          Object.keys(json.cloudData).forEach(k => {
+            if (k !== 'updatedAt') {
+              pageImages[k] = json.cloudData[k];
+            }
+          });
+          return true;
+        }
+      } catch (e) {
+        console.warn('Image chunk fetch error:', e);
+      }
+      return false;
+    }
+
+    async function loadFromCloud(isManual = false) {
+      setCloudBadge('🔄 クラウドから最新データ読込中...', '#1e40af', '#dbeafe', '#60a5fa');
+      try {
+        const resp = await fetch(`/api/cloud_sync?key=main&t=${Date.now()}`, { cache: 'no-store' });
+        const json = await resp.json();
+        if (resp.ok && json.ok && json.exists && json.cloudData && Array.isArray(json.cloudData.records) && json.cloudData.records.length > 0) {
+          const cd = json.cloudData;
+          records = cd.records.map((r, i) => ({ ...r, page: i + 1 }));
+          totalPages = records.length;
+          if (typeof cd.globalOffsetX === 'number') globalOffsetX = cd.globalOffsetX;
+          if (typeof cd.globalOffsetY === 'number') globalOffsetY = cd.globalOffsetY;
+          if (cd.budget && document.getElementById('budgetInput')) {
+            document.getElementById('budgetInput').value = cd.budget;
+          }
+
+          // 未確認の先頭ページ、または前回保存時のページ位置を復元
+          const firstUnverified = records.findIndex(r => !r.verified && !r.excluded);
+          if (typeof cd.currentPage === 'number' && cd.currentPage >= 1 && cd.currentPage <= totalPages) {
+            currentPage = cd.currentPage;
+          } else {
+            currentPage = firstUnverified >= 0 ? firstUnverified + 1 : 1;
+          }
+
+          document.getElementById('uploadZone').style.display = 'none';
+          document.getElementById('workspaceArea').style.display = 'grid';
+          updateHeaderLoadedBadge();
+
+          // まず現在のページの画像チャンクを最優先で取得してすぐ画面に表示
+          const maxChunk = typeof cd.maxImageChunk === 'number' ? cd.maxImageChunk : Math.floor((totalPages - 1) / IMG_CHUNK_SIZE);
+          const activeChunk = Math.floor((currentPage - 1) / IMG_CHUNK_SIZE);
+          if (maxChunk >= 0 && !pageImages[currentPage]) {
+            await fetchImageChunkFromCloud(activeChunk);
+          }
+
+          await renderCurrentPage();
+          if (document.getElementById('view-table').classList.contains('active')) renderRecordsTable();
+          if (document.getElementById('view-report').classList.contains('active')) renderExecutiveReport();
+
+          const timeStr = cd.updatedAt
+            ? new Date(cd.updatedAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
+            : '最新';
+          setCloudBadge(`☁️ クラウド同期済 (${timeStr})`, '#065f46', '#d1fae5', '#10b981');
+
+          // 残りのページの画像チャンクもバックグラウンドで順次取得
+          if (maxChunk >= 0) {
+            (async () => {
+              for (let c = 0; c <= maxChunk; c++) {
+                if (c === activeChunk) continue;
+                await fetchImageChunkFromCloud(c);
+              }
+              await renderCurrentPage();
+            })();
+          }
+
+          if (isManual) {
+            const verifiedCount = records.filter(r => r.verified && !r.excluded).length;
+            alert(`☁️ クラウドから最新データ（全${totalPages}件・うち確認済${verifiedCount}件）を読み込みました！\n現在 ${currentPage} 枚目からそのまま作業を続けられます。\n\n💡 新たな130件のPDFを取り込む場合は、上部の「➕ 追加PDF結合(130件等)」ボタンを押してください。`);
+          }
+          return;
+        }
+
+        // クラウドがまだ空の場合、このPCのlocalStorageにデータがあれば復元してクラウドへ初期アップロード
+        const localRaw = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (localRaw) {
+          const localData = JSON.parse(localRaw);
+          if (localData && Array.isArray(localData.records) && localData.records.length > 0) {
+            records = localData.records;
+            totalPages = records.length;
+            currentPage = localData.currentPage || 1;
+            document.getElementById('uploadZone').style.display = 'none';
+            document.getElementById('workspaceArea').style.display = 'grid';
+            updateHeaderLoadedBadge();
+            await renderCurrentPage();
+            await saveToCloudNow(false);
+            return;
+          }
+        }
+
+        setCloudBadge('☁️ クラウド待機中 (新規読込可)', '#065f46', '#d1fae5', '#10b981');
+        if (isManual) {
+          alert('現在クラウドにはまだ保存されたデータがありません。\nまずはこのPCまたは職場のPCからPDFやGoogleフォームを読み込むと、自動的にクラウドへ記憶されます。');
+        }
+      } catch (err) {
+        console.warn('Cloud load error:', err);
+        setCloudBadge('💾 ローカルモード', '#475569', '#f1f5f9', '#94a3b8');
+        if (isManual) {
+          alert('クラウドへの接続に失敗しました。公開URL上からアクセスしているかご確認ください。');
+        }
+      }
+    }
+
+    // Save / Restore JSON project state
+    function saveBackupJSON() {
+      if (!records.length) { alert('保存するデータがありません。'); return; }
+      const blob = new Blob([JSON.stringify({ records, currentPage, globalOffsetX, globalOffsetY, pageImages }, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `アンケート作業保存データ_${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+    }
+
+    function loadBackupJSON(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async ev => {
+        const data = JSON.parse(ev.target.result);
+        if (data.records) {
+          records = data.records.map((r, i) => ({ ...r, page: i + 1 }));
+          totalPages = records.length;
+          if (typeof data.globalOffsetX === 'number') globalOffsetX = data.globalOffsetX;
+          if (typeof data.globalOffsetY === 'number') globalOffsetY = data.globalOffsetY;
+          if (data.pageImages && typeof data.pageImages === 'object') {
+            pageImages = { ...pageImages, ...data.pageImages };
+          }
+          const firstUnverified = records.findIndex(r => !r.verified);
+          currentPage = data.currentPage || (firstUnverified >= 0 ? firstUnverified + 1 : 1);
+          document.getElementById('uploadZone').style.display = 'none';
+          document.getElementById('workspaceArea').style.display = 'grid';
+          updateHeaderLoadedBadge();
+          await renderCurrentPage();
+          await saveToCloudNow(false);
+          const imgPages = Object.keys(pageImages).map(Number).filter(Boolean);
+          if (imgPages.length) uploadPageImageChunks(imgPages);
+          const verifiedCount = records.filter(r => r.verified).length;
+          alert(`保存データ（全${totalPages}件・うち確認済${verifiedCount}件）を復元し、クラウドにも同期しました！\n続きの ${currentPage} 枚目から再開できます。`);
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    }
+
+    async function mergeBackupJSON(e) {
+      const files = Array.from(e.target.files || []);
+      if (!files.length) return;
+
+      let addedCount = 0;
+      const newImgPages = [];
+      for (const file of files) {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        if (data.records && Array.isArray(data.records)) {
+          data.records.forEach(r => {
+            const newPageNo = records.length + 1;
+            const copy = { ...r, page: newPageNo };
+            if (data.pageImages && data.pageImages[r.page]) {
+              pageImages[newPageNo] = data.pageImages[r.page];
+              newImgPages.push(newPageNo);
+            }
+            records.push(copy);
+            addedCount++;
+          });
+        }
+      }
+
+      totalPages = records.length;
+      if (totalPages > 0) {
+        currentPage = 1;
+        document.getElementById('uploadZone').style.display = 'none';
+        document.getElementById('workspaceArea').style.display = 'grid';
+        updateHeaderLoadedBadge();
+        await renderCurrentPage();
+        if (document.getElementById('view-table').classList.contains('active')) renderRecordsTable();
+        if (document.getElementById('view-report').classList.contains('active')) renderExecutiveReport();
+        await saveToCloudNow(false);
+        if (newImgPages.length) uploadPageImageChunks(newImgPages);
+        alert(`🔗 ${addedCount}件のデータを合算し、クラウドへ自動保存しました！（合計：全${totalPages}件）\nそのまま合算データでのExcel出力や四役報告用サマリー資料の作成が可能です。`);
+      }
+      e.target.value = '';
+    }
+
+    // Googleフォーム（スプレッドシートのExcel .xlsx または .csv）取込＆表記ゆれ自動正規化
+    function normalizeGoogleFormAge(raw) {
+      if (!raw) return '未記入';
+      const s = String(raw).trim();
+      if (SCHEMA.ages.includes(s)) return s;
+      const m = s.match(/^(\d+)代/);
+      if (m) {
+        const candidate = `${m[1]}歳代`;
+        if (SCHEMA.ages.includes(candidate)) return candidate;
+        if (parseInt(m[1], 10) >= 80) return '80歳以上';
+      }
+      if (s.includes('80')) return '80歳以上';
+      return '未記入';
+    }
+
+    function normalizeGoogleFormResidence(raw) {
+      if (!raw) return '未記入';
+      const s = String(raw).trim();
+      if (s.includes('八千代市内') || s === '市内') return '八千代市内';
+      if (s.includes('八千代市以外') || s.includes('八千代市外') || s === '市外') return '八千代市外';
+      return '未記入';
+    }
+
+    async function importGoogleFormFile(e) {
+      const files = Array.from(e.target.files || []);
+      if (!files.length) return;
+
+      let addedCount = 0;
+      let skippedDuplicateCount = 0;
+      let autoExcludedTestCount = 0;
+
+      for (const file of files) {
+        let wb;
+        if (file.name.toLowerCase().endsWith('.csv')) {
+          const text = await file.text();
+          wb = XLSX.read(text, { type: 'string', raw: false });
+        } else {
+          const buf = await file.arrayBuffer();
+          wb = XLSX.read(buf, { type: 'array', raw: false });
+        }
+        const firstSheetName = wb.SheetNames[0];
+        const ws = wb.Sheets[firstSheetName];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
+
+        for (let rIdx = 0; rIdx < rows.length; rIdx++) {
+          const row = rows[rIdx];
+          if (!row || row.length < 2) continue;
+
+          const col0 = String(row[0] || '').trim();
+          const col1 = String(row[1] || '').trim();
+          if (!col0 && !col1) continue;
+          if (col0.includes('タイムスタンプ') || col0.toLowerCase().includes('timestamp') || col1.includes('年齢')) continue;
+
+          const timestamp = col0;
+          const age = normalizeGoogleFormAge(row[1]);
+          const rawGender = String(row[2] || '').trim();
+          const gender = (rawGender === '男性' || rawGender === '女性') ? rawGender : '未記入';
+          const residence = normalizeGoogleFormResidence(row[3]);
+
+          const rawQ1 = String(row[4] || '').trim();
+          const q1 = [];
+          if (rawQ1) {
+            rawQ1.split(/[,、\/]/).map(s => s.trim()).filter(Boolean).forEach(part => {
+              const idx = SCHEMA.q1.findIndex(label => label === part || part.includes(label) || label.includes(part));
+              if (idx >= 0 && !q1.includes(idx)) q1.push(idx);
+            });
+            q1.sort((a, b) => a - b);
+          }
+
+          const rawQ2 = String(row[5] || '').trim();
+          let q2 = null;
+          if (rawQ2) {
+            const idx = SCHEMA.q2.findIndex(label => label === rawQ2 || rawQ2.includes(label.slice(0, 6)) || label.includes(rawQ2));
+            if (idx >= 0) q2 = idx;
+          }
+
+          const rawQ3 = String(row[6] || '').trim();
+          let q3 = null;
+          if (rawQ3) {
+            const idx = SCHEMA.q3.findIndex(label => label === rawQ3 || rawQ3.includes(label.slice(0, 6)) || label.includes(rawQ3));
+            if (idx >= 0) q3 = idx;
+          }
+
+          const rawQ4 = String(row[7] || '').trim();
+          const q4 = [];
+          const q4Extras = [];
+          if (rawQ4) {
+            rawQ4.split(/[,、\/]/).map(s => s.trim()).filter(Boolean).forEach(part => {
+              const idx = SCHEMA.q4.findIndex((label, i) => i < 6 && (label === part || part.includes(label) || label.includes(part)));
+              if (idx >= 0) {
+                if (!q4.includes(idx)) q4.push(idx);
+              } else if (part.includes('その他')) {
+                if (!q4.includes(6)) q4.push(6);
+              } else {
+                if (!q4.includes(6)) q4.push(6);
+                q4Extras.push(part);
+              }
+            });
+            q4.sort((a, b) => a - b);
+          }
+
+          const q5Text = String(row[8] || '').trim();
+
+          const isDup = records.some(existing =>
+            existing.source === 'Googleフォーム' &&
+            existing.timestamp === timestamp &&
+            existing.age === age &&
+            existing.gender === gender &&
+            existing.q5Text === q5Text
+          );
+          if (isDup) {
+            skippedDuplicateCount++;
+            continue;
+          }
+
+          let testReason = '';
+          if (timestamp.startsWith('2026-10-15') || timestamp.startsWith('2026/10/15')) {
+            testReason = '開催前(10/15)の事前テスト回答の可能性';
+          } else if (q5Text === 'あ' || q5Text === 'かさ' || q5Text === 'てすと' || q5Text === 'テスト') {
+            testReason = 'テスト入力文字の可能性';
+          }
+
+          const isTest = Boolean(testReason);
+          if (isTest) autoExcludedTestCount++;
+
+          records.push({
+            page: records.length + 1,
+            source: 'Googleフォーム',
+            timestamp,
+            verified: true,
+            excluded: isTest,
+            testReason,
+            age,
+            gender,
+            residence,
+            q1,
+            q2,
+            q3,
+            q4,
+            q4Other: q4Extras.join(' / '),
+            q5Text
+          });
+          addedCount++;
+        }
+      }
+
+      totalPages = records.length;
+      if (totalPages > 0) {
+        if (!currentPage || currentPage > totalPages) currentPage = 1;
+        document.getElementById('uploadZone').style.display = 'none';
+        document.getElementById('workspaceArea').style.display = 'grid';
+        updateHeaderLoadedBadge();
+        await renderCurrentPage();
+        if (document.getElementById('view-table').classList.contains('active')) renderRecordsTable();
+        if (document.getElementById('view-report').classList.contains('active')) renderExecutiveReport();
+
+        await saveToCloudNow(false);
+
+        let msg = `🌐 Googleフォーム回答データを ${addedCount} 件取り込み、クラウドへ自動保存しました！\n・表記ゆれ（「40代→40歳代」「八千代市以外→八千代市外」）は自動変換済みです。`;
+        if (skippedDuplicateCount > 0) {
+          msg += `\n・既に取り込み済みの重複データ ${skippedDuplicateCount} 件は自動スキップしました。`;
+        }
+        if (autoExcludedTestCount > 0) {
+          msg += `\n\n⚠️ 【重要】タイムスタンプがイベント開催前（10/15）等の「事前テスト回答」と見られるデータが ${autoExcludedTestCount} 件含まれていたため、初期状態で『集計除外』に設定しています。\n（「回答データ一覧」タブからいつでも確認・除外解除が可能です）`;
+        }
+        alert(msg);
+      }
+      e.target.value = '';
+    }
+
+    // Demo loader
+    function loadDemoSample() {
+      records = [
+        {
+          page: 1,
+          verified: true,
+          excluded: false,
+          age: '未記入',
+          gender: '女性',
+          residence: '八千代市外',
+          q1: [0],
+          q2: 2,
+          q3: 2,
+          q4: [4],
+          q4Other: '',
+          q5Text: ''
+        }
+      ];
+
+      totalPages = 1;
+      currentPage = 1;
+      document.getElementById('uploadZone').style.display = 'none';
+      document.getElementById('workspaceArea').style.display = 'grid';
+      document.getElementById('loadedBadge').textContent = 'サンプル1枚目表示中（上部から実PDFを読込可）';
+
+      const canvas = document.getElementById('pdfCanvas');
+      canvas.width = 800;
+      canvas.height = 1131;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#1e293b';
+      ctx.font = 'bold 24px sans-serif';
+      ctx.fillText('アンケート用紙（先ほどの1枚目の読み取りデータ反映済）', 120, 95);
+      ctx.font = '16px sans-serif';
+      ctx.fillStyle = '#475569';
+      ctx.fillText('※ 実際の100枚以上のPDFを読み込むには、画面上部のボタンからPDFを選択してください。', 75, 130);
+
+      renderCropPreviews(canvas);
+      refreshEditorUI();
+    }
+
+    initFormButtons();
+    // 画面を開いた瞬間にクラウドから最新の続きデータを自動復元
+    loadFromCloud(false);
+  </script>
+</body>
+</html>
