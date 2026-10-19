@@ -522,12 +522,13 @@
   <!-- VIEW 1: PDF Reader & Fast Verification -->
   <section id="view-reader" class="view-section active">
     <div class="upload-zone" id="uploadZone">
-      <h2>📄 スキャンしたアンケートPDF（100枚〜250枚以上対応）をここにドロップ、または選択してください</h2>
-      <p>☁️ <strong>クラウド自動記憶対応</strong>：このPCと職場のPCのどちらからでも自動で続きから再開でき、別PCからの追加130件PDF結合にも対応しています。</p>
-      <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap;">
-        <button class="btn btn-primary" onclick="document.getElementById('pdfFileInput').click()">📁 アンケートPDFファイルを選択</button>
-        <button class="btn btn-primary" style="background:#059669;border-color:#10b981;" onclick="loadFromCloud(true)">☁️ クラウドに保存済みの続きデータを読み込む</button>
-        <button class="btn btn-outline" onclick="loadDemoSample()">🧪 サンプルデータで試す</button>
+      <h2>📄 アンケートPDF、または途中保存データ（.json）をここにドロップ／選択してください</h2>
+      <p>☁️ <strong>クラウド自動記憶対応</strong>：一度取り込むと自動でクラウドへ記憶され、職場のPCでURLを開くだけでそのまま続きから再開できます。</p>
+      <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap; margin-top:14px;">
+        <button class="btn btn-primary" onclick="document.getElementById('pdfFileInput').click()">📁 ① アンケートPDFを選択</button>
+        <button class="btn btn-primary" style="background:#4f46e5;border-color:#6366f1;" onclick="document.getElementById('jsonRestoreInput').click()">📂 ② 途中までの保存データ(.json)を取り込む</button>
+        <button class="btn btn-primary" style="background:#0d9488;border-color:#14b8a6;" onclick="document.getElementById('googleFormInput').click()">🌐 ③ Googleフォーム(.xlsx/.csv)を取り込む</button>
+        <button class="btn btn-primary" style="background:#059669;border-color:#10b981;" onclick="loadFromCloud(true)">☁️ クラウドの続きデータを再読込</button>
       </div>
       <input type="file" id="pdfFileInput" accept="application/pdf" style="display:none" onchange="handlePDFSelect(event)">
       <div id="batchProgress" style="display:none; margin-top:14px; font-weight:700; color:var(--primary);"></div>
@@ -1108,7 +1109,7 @@
       if (viewName === 'report') { tabs[2].classList.add('active'); renderExecutiveReport(); }
     }
 
-    // Drag & Drop PDF
+    // Drag & Drop PDF / JSON / Excel / CSV
     const uploadZone = document.getElementById('uploadZone');
     uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
     uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
@@ -1116,7 +1117,15 @@
       e.preventDefault();
       uploadZone.classList.remove('dragover');
       if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-        smartHandlePDFFile(e.dataTransfer.files[0]);
+        const f = e.dataTransfer.files[0];
+        const lower = f.name.toLowerCase();
+        if (lower.endsWith('.json')) {
+          loadBackupJSON({ target: { files: [f], value: '' } });
+        } else if (lower.endsWith('.xlsx') || lower.endsWith('.xls') || lower.endsWith('.csv')) {
+          importGoogleFormFile({ target: { files: Array.from(e.dataTransfer.files), value: '' } });
+        } else {
+          smartHandlePDFFile(f);
+        }
       }
     });
 
