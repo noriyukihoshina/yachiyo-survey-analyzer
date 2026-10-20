@@ -75,8 +75,8 @@ function Add-Header($slide, [string]$secLabel, [string]$titleText, [string]$subL
     Add-Rect $slide 0 0 960 58 $colNavy | Out-Null
     Add-Rect $slide 24 13 148 32 $secColor -1 $false | Out-Null
     Add-Text $slide 24 15 148 28 $secLabel 13 $colWhite $true 2 | Out-Null
-    Add-Text $slide 184 11 660 36 $titleText 20 $colWhite $true 1 | Out-Null
-    Add-Text $slide 840 16 96 26 ("$pageNo / 14") 13 (RGB 203 213 225) $true 3 | Out-Null
+    Add-Text $slide 182 13 676 34 $titleText 18 $colWhite $true 1 | Out-Null
+    Add-Text $slide 858 16 78 26 ("$pageNo / 14") 13 (RGB 203 213 225) $true 3 | Out-Null
 
     # リードメッセージバー（大きな文字で要点を端的に表示）
     Add-Rect $slide 24 68 912 46 $colWhite $colCardBorder $false | Out-Null
@@ -545,15 +545,15 @@ Add-HBar $s11 38 198 165 170 "よく知っている(利用有)" "31名 (18.1%)" 
 Add-HBar $s11 38 228 165 170 "名前や場所は知っている" "102名 (59.6%)" 59.6 $colAmber 13.5
 Add-HBar $s11 38 258 165 170 "今日初めて知った" "36名 (21.1%)" 21.1 $colRed 13.5
 
-Add-Rect $s11 38 290 468 38 $colSoftRed $colRed $false | Out-Null
-Add-Text $s11 46 295 452 28 "地元・八千代市民の 80.7%（138名）が「今日初めて知った」または「名前・場所のみ」" 13 $colRed $true 1 | Out-Null
+Add-Rect $s11 38 288 468 34 $colSoftRed $colRed $false | Out-Null
+Add-Text $s11 44 291 456 28 "地元・八千代市民の 80.7%（138名）が「今日初めて知った」または「名前のみ」" 12.5 $colRed $true 1 | Out-Null
 
-Add-Text $s11 38 338 460 24 "■ 2. 八千代市内の主要年代別「認知度」内訳" 14.5 $colNavy $true 1 | Out-Null
-$t11 = $s11.Shapes.AddTable(5, 4, 38, 366, 468, 134).Table
-$t11.Columns.Item(1).Width = 118
-$t11.Columns.Item(2).Width = 110
-$t11.Columns.Item(3).Width = 120
-$t11.Columns.Item(4).Width = 120
+Add-Text $s11 38 330 460 24 "■ 2. 八千代市内の主要年代別「認知度」内訳" 14 $colNavy $true 1 | Out-Null
+$t11 = $s11.Shapes.AddTable(5, 4, 38, 356, 468, 140).Table
+$t11.Columns.Item(1).Width = 136
+$t11.Columns.Item(2).Width = 108
+$t11.Columns.Item(3).Width = 112
+$t11.Columns.Item(4).Width = 112
 $t11Data = @(
     @("八千代市内 年代", "よく知っている", "名前・場所のみ", "今日初めて知った"),
     @("市内 40歳代 (21名)", "3名 (14.3%)", "11名 (52.4%)", "7名 (33.3%)"),
