@@ -3,5 +3,7 @@ setup_cloud_storage.ps1
 *.pdf
 cloud_backup_*.json
 cleaned_*.json
+completed_survey_backup_*.json
+final_survey_*.json
 staff_survey.csv
 
