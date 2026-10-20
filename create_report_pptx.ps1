@@ -2,35 +2,39 @@
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 $outPath = "c:\Users\coffe\OneDrive\デスクトップ\Antigravity\アンケート解析\八千代リハビリテーション病院_どーんと祭出展結果報告_四役プレゼン.pptx"
+$webPath = "c:\Users\coffe\OneDrive\デスクトップ\Antigravity\アンケート解析\report_presentation.pptx"
+$artifactDir = "C:\Users\coffe\.gemini\antigravity\brain\57f12e92-5bc8-492c-8c7d-8ab9b420cf7a"
 
 $pp = New-Object -ComObject PowerPoint.Application
-# PowerPoint 16: 16:9 Widescreen (960 x 540 pt)
 $pres = $pp.Presentations.Add($false)
 $pres.PageSetup.SlideWidth = 960
 $pres.PageSetup.SlideHeight = 540
 
-function RGB($r, $g, $b) {
+function RGB([int]$r, [int]$g, [int]$b) {
     return [int]($r + ($g * 256) + ($b * 65536))
 }
 
-$colNavy      = RGB 15 35 66
-$colBlue      = RGB 30 64 175
-$colLightBlue = RGB 239 246 255
-$colBorderB   = RGB 191 219 254
-$colTeal      = RGB 13 148 136
-$colLightTeal = RGB 240 253 250
-$colAmber     = RGB 217 119 6
-$colLightAmb  = RGB 255 251 235
-$colRed       = RGB 185 28 28
-$colLightRed  = RGB 254 242 242
-$colWhite     = RGB 255 255 255
-$colBgGray    = RGB 248 250 252
-$colTextDark  = RGB 15 23 42
-$colTextMuted = RGB 71 85 105
-$colBarBg     = RGB 226 232 240
+# 厳選5色パレット ＋ ベースカラー（ビジネスライク・高コントラスト）
+$colNavy      = RGB 15 35 66      # メイン色1：ディープネイビー（信頼・基調）
+$colBlue      = RGB 29 78 216     # メイン色2：ロイヤルブルー（主要データ）
+$colTeal      = RGB 13 148 136    # メイン色3：ティールグリーン（達成・高評価）
+$colAmber     = RGB 217 119 6     # メイン色4：アンバーゴールド（注目・新規層）
+$colRed       = RGB 185 28 28     # メイン色5：クリムゾンレッド（弱点・課題強調）
 
-function Add-Rect($slide, $left, $top, $width, $height, $fillRGB, $lineRGB = -1, $round = $false) {
-    $type = if ($round) { 5 } else { 1 } # 5=RoundedRect, 1=Rect
+$colSlate     = RGB 71 85 105     # 補助ダークグレー
+$colMuted     = RGB 100 116 139   # 補助ミディアムグレー
+$colWhite     = RGB 255 255 255
+$colBg        = RGB 248 250 252   # 全体背景（上品なオフホワイト）
+$colCardBorder= RGB 203 213 225   # カード枠線
+$colBarBg     = RGB 226 232 240   # グラフ背景バー
+
+$colSoftBlue  = RGB 239 246 255
+$colSoftTeal  = RGB 240 253 250
+$colSoftAmber = RGB 255 251 235
+$colSoftRed   = RGB 254 242 242
+
+function Add-Rect($slide, [single]$left, [single]$top, [single]$width, [single]$height, [int]$fillRGB, [int]$lineRGB = -1, [bool]$round = $false) {
+    $type = if ($round) { 5 } else { 1 }
     $sh = $slide.Shapes.AddShape([int]$type, [single]$left, [single]$top, [single]$width, [single]$height)
     $sh.Fill.Visible = -1
     $sh.Fill.ForeColor.RGB = [int]$fillRGB
@@ -42,18 +46,18 @@ function Add-Rect($slide, $left, $top, $width, $height, $fillRGB, $lineRGB = -1,
         $sh.Line.Visible = 0
     }
     if ($round -and $sh.Adjustments.Count -ge 1) {
-        $sh.Adjustments.Item(1) = [single]0.06
+        $sh.Adjustments.Item(1) = [single]0.04
     }
     return $sh
 }
 
-function Add-Text($slide, $left, $top, $width, $height, $text, $fontSize = 14, $colorRGB = $colTextDark, $bold = $false, $align = 1) {
+function Add-Text($slide, [single]$left, [single]$top, [single]$width, [single]$height, [string]$text, [single]$fontSize = 15, [int]$colorRGB = $colNavy, [bool]$bold = $false, [int]$align = 1) {
     $tb = $slide.Shapes.AddTextbox(1, [single]$left, [single]$top, [single]$width, [single]$height)
     $tf = $tb.TextFrame
-    $tf.MarginLeft = 4
-    $tf.MarginRight = 4
-    $tf.MarginTop = 2
-    $tf.MarginBottom = 2
+    $tf.MarginLeft = [single]6
+    $tf.MarginRight = [single]6
+    $tf.MarginTop = [single]4
+    $tf.MarginBottom = [single]4
     $tf.WordWrap = -1
     $tr = $tf.TextRange
     $tr.Text = $text
@@ -62,274 +66,662 @@ function Add-Text($slide, $left, $top, $width, $height, $text, $fontSize = 14, $
     $tr.Font.Size = [single]$fontSize
     $tr.Font.Color.RGB = [int]$colorRGB
     $tr.Font.Bold = if ($bold) { -1 } else { 0 }
-    $tr.ParagraphFormat.Alignment = $align # 1=Left, 2=Center, 3=Right
+    $tr.ParagraphFormat.Alignment = [int]$align
     return $tb
 }
 
-function Add-Header($slide, $stepBadge, $titleText, $keyMessage, $pageNo) {
-    Add-Rect $slide 0 0 960 540 $colBgGray | Out-Null
-    Add-Rect $slide 0 0 960 56 $colNavy | Out-Null
-    $b = Add-Rect $slide 24 12 110 32 $colTeal -1 $true
-    Add-Text $slide 24 15 110 28 $stepBadge 12 $colWhite $true 2 | Out-Null
-    Add-Text $slide 146 11 680 34 $titleText 20 $colWhite $true 1 | Out-Null
-    Add-Text $slide 830 16 106 24 ("P. " + $pageNo + " / 5") 12 (RGB 203 213 225) $true 3 | Out-Null
+function Add-Header($slide, [string]$secLabel, [string]$titleText, [string]$subLead, [int]$pageNo, [int]$secColor = $colBlue) {
+    Add-Rect $slide 0 0 960 540 $colBg | Out-Null
+    Add-Rect $slide 0 0 960 58 $colNavy | Out-Null
+    Add-Rect $slide 24 13 148 32 $secColor -1 $false | Out-Null
+    Add-Text $slide 24 15 148 28 $secLabel 13 $colWhite $true 2 | Out-Null
+    Add-Text $slide 184 11 660 36 $titleText 20 $colWhite $true 1 | Out-Null
+    Add-Text $slide 840 16 96 26 ("$pageNo / 14") 13 (RGB 203 213 225) $true 3 | Out-Null
 
-    # Key message banner
-    Add-Rect $slide 24 68 912 46 $colLightBlue $colBorderB $true | Out-Null
-    Add-Rect $slide 24 68 8 46 $colBlue | Out-Null
-    Add-Text $slide 42 74 884 36 $keyMessage 13.5 $colNavy $true 1 | Out-Null
+    # リードメッセージバー（大きな文字で要点を端的に表示）
+    Add-Rect $slide 24 68 912 46 $colWhite $colCardBorder $false | Out-Null
+    Add-Rect $slide 24 68 8 46 $secColor | Out-Null
+    Add-Text $slide 40 73 886 36 $subLead 14.5 $colNavy $true 1 | Out-Null
 }
 
-function Add-HBar($slide, $left, $top, $labelW, $maxBarW, $label, $valText, $pctVal, $barColor) {
-    Add-Text $slide $left $top $labelW 24 $label 12.5 $colTextDark $true 1 | Out-Null
+function Add-Card($slide, [single]$left, [single]$top, [single]$width, [single]$height, [string]$cardTitle, [int]$accentColor = $colNavy) {
+    Add-Rect $slide $left $top $width $height $colWhite $colCardBorder $false | Out-Null
+    Add-Rect $slide $left $top $width 6 $accentColor | Out-Null
+    if ($cardTitle -ne "") {
+        Add-Text $slide ($left + 14) ($top + 12) ($width - 28) 28 $cardTitle 16 $colNavy $true 1 | Out-Null
+        Add-Rect $slide ($left + 14) ($top + 42) ($width - 28) 1 $colBarBg | Out-Null
+    }
+}
+
+function Add-HBar($slide, [single]$left, [single]$top, [single]$labelW, [single]$maxBarW, [string]$label, [string]$valText, [single]$pctVal, [int]$barColor, [single]$fontSize = 14) {
+    Add-Text $slide $left $top $labelW 26 $label $fontSize $colNavy $true 1 | Out-Null
     $barX = $left + $labelW + 6
-    Add-Rect $slide $barX ($top + 3) $maxBarW 18 $colBarBg | Out-Null
-    $fillW = [math]::Max(6, [math]::Round($maxBarW * ($pctVal / 100.0)))
-    Add-Rect $slide $barX ($top + 3) $fillW 18 $barColor | Out-Null
-    Add-Text $slide ($barX + $maxBarW + 8) $top 115 24 $valText 12.5 $colNavy $true 1 | Out-Null
+    Add-Rect $slide $barX ($top + 4) $maxBarW 18 $colBarBg | Out-Null
+    $fillW = [math]::Max(4, [math]::Round($maxBarW * ($pctVal / 100.0)))
+    Add-Rect $slide $barX ($top + 4) $fillW 18 $barColor | Out-Null
+    Add-Text $slide ($barX + $maxBarW + 8) $top 135 26 $valText $fontSize $colNavy $true 1 | Out-Null
+}
+
+function Style-Table($tbl, [int]$rows, [int]$cols, [int]$headerBg = $colNavy, [single]$fontSize = 13.5) {
+    for ($r = 1; $r -le $rows; $r++) {
+        for ($c = 1; $c -le $cols; $c++) {
+            $cell = $tbl.Cell($r, $c)
+            $tr = $cell.Shape.TextFrame.TextRange
+            $tr.Font.Name = "Meiryo UI"
+            $tr.Font.NameFarEast = "Meiryo UI"
+            $tr.Font.Size = [single]$fontSize
+            if ($r -eq 1) {
+                $cell.Shape.Fill.ForeColor.RGB = [int]$headerBg
+                $tr.Font.Color.RGB = [int]$colWhite
+                $tr.Font.Bold = -1
+            } else {
+                $cell.Shape.Fill.ForeColor.RGB = if ($r % 2 -eq 0) { [int]$colWhite } else { [int]$colBg }
+                $tr.Font.Color.RGB = [int]$colNavy
+            }
+        }
+    }
 }
 
 # ==============================================================================
-# SLIDE 1: 表紙 ＆ エグゼクティブサマリー（400字報告書＋3大KPI）
+# SLIDE 1: 表紙 ＆ 起案書における3つの目的
 # ==============================================================================
-$s1 = $pres.Slides.Add(1, 12) # 12 = ppLayoutBlank
-Add-Rect $s1 0 0 960 540 $colBgGray | Out-Null
-Add-Rect $s1 0 0 960 118 $colNavy | Out-Null
-Add-Rect $s1 0 114 960 5 $colTeal | Out-Null
+$s1 = $pres.Slides.Add(1, 12)
+Add-Rect $s1 0 0 960 540 $colBg | Out-Null
+Add-Rect $s1 0 0 960 155 $colNavy | Out-Null
+Add-Rect $s1 0 150 960 6 $colTeal | Out-Null
 
-Add-Text $s1 36 18 880 28 "八千代リハビリテーション病院｜四役報告資料（2026年10月17日・18日 実施）" 14 (RGB 147 197 253) $true 1 | Out-Null
-Add-Text $s1 36 48 880 54 "八千代市産業祭（どーんと祭）出展結果 報告書" 28 $colWhite $true 1 | Out-Null
+# 表紙のみシンプルな病院・医療クロスアイコンを図形で描画
+Add-Rect $s1 40 34 52 52 $colTeal -1 $true | Out-Null
+Add-Rect $s1 60 44 12 32 $colWhite | Out-Null
+Add-Rect $s1 50 54 32 12 $colWhite | Out-Null
 
-# 3 KPI Cards
-# Card 1
-Add-Rect $s1 32 134 288 132 $colWhite $colBorderB $true | Out-Null
-Add-Rect $s1 32 134 288 8 $colBlue | Out-Null
-Add-Text $s1 46 148 260 24 "① アンケート有効回答数（目標50名）" 12.5 $colTextMuted $true 1 | Out-Null
-Add-Text $s1 46 172 260 48 "236 名（4.7倍）" 28 $colBlue $true 1 | Out-Null
-Add-Text $s1 46 224 260 36 "達成率 472.0%（1日目:106名 / 2日目:130名）`n※白紙除外後の確定有効回答数" 11 $colTextDark $false 1 | Out-Null
+Add-Text $s1 106 28 820 28 "八千代リハビリテーション病院｜四役報告資料（2026年10月17日・18日 実施）" 15 (RGB 147 197 253) $true 1 | Out-Null
+Add-Text $s1 106 60 820 50 "八千代市産業祭「どーんと祭」出展結果報告書" 28 $colWhite $true 1 | Out-Null
+Add-Text $s1 106 112 820 28 "会場：八千代市総合運動公園 ／ 出展規模：3区画・6部署協働体制 ／ 報告者：リハビリテーション部 保科憲幸" 13.5 (RGB 203 213 225) $false 1 | Out-Null
 
-# Card 2
-Add-Rect $s1 336 134 288 132 $colWhite (RGB 153 246 228) $true | Out-Null
-Add-Rect $s1 336 134 288 8 $colTeal | Out-Null
-Add-Text $s1 350 148 260 24 "② 当院の今後の利用・検討意向" 12.5 $colTextMuted $true 1 | Out-Null
-Add-Text $s1 350 172 260 48 "90.3 %（213名）" 28 $colTeal $true 1 | Out-Null
-Add-Text $s1 350 224 260 36 "「ぜひ利用したい」25.4%（60名）`n＋「候補として検討」64.8%（153名）" 11 $colTextDark $false 1 | Out-Null
+# 概要数値バー
+Add-Rect $s1 32 174 896 64 $colWhite $colCardBorder $false | Out-Null
+Add-Rect $s1 32 174 8 64 $colBlue | Out-Null
+Add-Text $s1 52 182 860 48 "【出展実績サマリー】  ブース来場者数：計 268 名（1日目 120名 ／ 2日目 148名）`n                      アンケート有効回答数：計 236 名（1日目 106名 ／ 2日目 130名）  ｜  参加スタッフ：6部署 14名" 15 $colNavy $true 1 | Out-Null
 
-# Card 3
-Add-Rect $s1 640 134 288 132 $colWhite (RGB 253 230 138) $true | Out-Null
-Add-Rect $s1 640 134 288 8 $colAmber | Out-Null
-Add-Text $s1 654 148 260 24 "③ 新規認知獲得 ＆ 広域集客" 12.5 $colTextMuted $true 1 | Out-Null
-Add-Text $s1 654 174 268 44 "28.4 %（新規67名）" 24 $colAmber $true 1 | Out-Null
-Add-Text $s1 654 224 260 36 "「今日初めて当院を知った」が約3割`n八千代市内 72.5% ／ 市外 26.3%（62名）" 11 $colTextDark $false 1 | Out-Null
+# 起案書の3つの目的（原文準拠）
+Add-Text $s1 32 252 896 28 "■ 起案書における出展の目的（3つの柱）" 16 $colNavy $true 1 | Out-Null
 
-# Executive Summary Box (400字報告書全文・構造化)
-Add-Rect $s1 32 282 896 232 $colWhite $colBorderB $true | Out-Null
-Add-Rect $s1 32 282 896 36 $colNavy | Out-Null
-Add-Text $s1 48 287 860 26 "📋 出展結果 総括サマリー（簡易報告書）" 14 $colWhite $true 1 | Out-Null
+# 目的1
+Add-Card $s1 32 286 288 226 "1. 基本方針の遂行（地域貢献）" $colBlue
+Add-Text $s1 46 340 260 160 "来場者4.5万人規模の「どーんと祭」出展と、多職種による健康相談・測定機会の提供を通じ、地域医療への貢献と住民の健康寿命延伸に寄与する。" 14.5 $colNavy $false 1 | Out-Null
 
-$summaryBody = @"
-■ 目的と全体成果：10月17日・18日の2日間、病院認知度向上と地域貢献を目的に産業祭へ初出展した。アンケート有効回答数は 236名（1日目106名・2日目130名）に達し、起案目標50名の約4.7倍（達成率472%）と想定を大きく上回る成果を収めた。
+# 目的2
+Add-Card $s1 336 286 288 226 "2. 経営的価値（認知・集患）" $colAmber
+Add-Text $s1 350 340 260 160 "地域住民へ「顔が見える医療機関」としての認知を確立し、将来的に来場者やそのご家族が入院を要する事態となった際、当院が第一選択として思い浮かぶような下地を作る。" 14.5 $colNavy $false 1 | Out-Null
 
-■ 来場者属性と反応：来場者は八千代市内72.5%、市外26.3%と広域に及び、1日目は60代以上のシニア層中心（52.8%）、2日目は40代以下の若年・子育て世代が倍増（19.8%→32.3%）した。体験では「血管年齢測定（72.9%）」「筋肉量測定（66.5%）」が特に好評で、「当院を今日初めて知った」新規層が28.4%（67名）、万が一の際に当院を「利用・検討したい」層は 90.3%（213名）に上った。また地域の健康課題は「転倒予防（39.4%）」「栄養（33.5%）」「認知機能（33.1%）」「介護・終活（30.1%）」が各3割超と高く、今後の健康教室の有力テーマが明確となった。
+# 目的3
+Add-Card $s1 640 286 288 226 "3. 組織的価値（多職種連携）" $colTeal
+Add-Text $s1 654 340 260 160 "6部署（リハ・看護・薬剤・栄養・地域連携・総務）が協働して一つの地域イベントを企画・運営することで、院内の多職種連携を強化し、日常業務の連携基盤をより強固にする。" 14.5 $colNavy $false 1 | Out-Null
 
-■ 来期に向けた課題：一方、3区画では常時混雑し測定制限も生じたため、参加スタッフ全員（100%）が「参加して良かった」と回答しつつも75%が人員・スペース不足を挙げた。来期は「4区画への拡大」と「誘導・測定スタッフの増員（休憩確保）」を課題としたい。
-"@
-Add-Text $s1 48 326 864 180 $summaryBody 12.2 $colTextDark $false 1 | Out-Null
 
 # ==============================================================================
-# SLIDE 2: 来場者属性分析（1日目 vs 2日目の年齢変化・居住地・性別）
+# SLIDE 2: 【第1部】来場者アンケートの質問事項とそこから見えること
 # ==============================================================================
 $s2 = $pres.Slides.Add(2, 12)
-Add-Header $s2 "基本属性分析" "来場者の年齢層（1日目 vs 2日目）・お住まい・性別" "1日目は60代以上のシニア層中心（52.8%）、2日目は40代以下の若年・子育て世代が倍増（19.8%→32.3%）！" 2
+Add-Header $s2 "第1部：来場者調査" "来場者アンケートの質問事項と各設問から見えること" "全6項目（基本情報＋Q1〜Q5）を通じて、今回の出展評価・現在の認知度・当院への評価・住民の関心事を把握する" 2 $colBlue
 
-# Left Card: 1日目 vs 2日目 年齢構成比較
-Add-Rect $s2 24 126 530 390 $colWhite $colBorderB $true | Out-Null
-Add-Text $s2 40 136 500 28 "📊 年代別の来場変化（1日目：106名 vs 2日目：130名）" 15 $colNavy $true 1 | Out-Null
-Add-Text $s2 40 164 500 22 "※2日目は40歳代が 8.5% → 18.5%（9名→24名）と2.7倍に急増し、家族連れが多数来場" 11 $colTextMuted $false 1 | Out-Null
+$t2 = $s2.Shapes.AddTable(7, 3, 24, 128, 912, 386).Table
+$t2.Columns.Item(1).Width = 230
+$t2.Columns.Item(2).Width = 342
+$t2.Columns.Item(3).Width = 340
 
-# Age Table inside Left Card
-$tblAge = $s2.Shapes.AddTable(7, 4, 40, 192, 498, 230).Table
-$headersAge = @("年代区分", "全体 (236名)", "1日目 (106名)", "2日目 (130名)")
-for ($c=1; $c -le 4; $c++) {
-    $cell = $tblAge.Cell(1, $c)
-    $cell.Shape.Fill.ForeColor.RGB = $colNavy
-    $tr = $cell.Shape.TextFrame.TextRange
-    $tr.Text = $headersAge[$c-1]
-    $tr.Font.NameFarEast = "Meiryo UI"
-    $tr.Font.Size = [single]11.5
-    $tr.Font.Bold = -1
-    $tr.Font.Color.RGB = $colWhite
+$t2Data = @(
+    @("質問項目", "選択肢・回答形式", "この質問から何が見えるか"),
+    @("基本情報", "・年齢（10歳代〜90歳代）`n・性別（男性・女性）`n・お住まい（八千代市内・八千代市外）", "来場者の属性（年代・性別・居住地）の内訳と、1日目・2日目の客層の違い"),
+    @("Q1. 本日参考になった内容は`n    どれですか？", "・筋肉量測定   ・血管年齢測定   ・お薬相談`n・栄養レッスン ・人生会議（終活）の案内`n（複数選択可）", "今回の出展内容に対する評価"),
+    @("Q2. これまで当院を`n    ご存知でしたか？", "・よく知っている（自身や家族が利用したことがある）`n・名前や場所は知っている`n・今日初めて知った（単一選択）", "地域における当院の現在の認知度"),
+    @("Q3. 万が一の際、当院を利用`n    したいと思いますか？", "・ぜひ利用したい`n・候補の一つとして検討したい`n・他の病院を選ぶ・わからない（単一選択）", "アンケート回答時における当院の評価"),
+    @("Q4. 現在健康について気になる`n    ことはありますか？", "・足腰の衰え・転倒  ・物忘れ・認知機能`n・食事・栄養バランス ・薬の飲み方`n・将来の介護や終活  ・とくにない  ・その他", "地域住民の抱える健康課題や関心のチェック`n（※今後の知名度向上に向けた定期的な健康教室のテーマ選定用データ）"),
+    @("Q5. 来年に期待する内容は`n    何ですか？", "・自由記述（計39件の記述回答）", "来年度の出展内容に向けたヒント")
+)
+for ($r = 0; $r -lt 7; $r++) {
+    for ($c = 0; $c -lt 3; $c++) {
+        $t2.Cell($r+1, $c+1).Shape.TextFrame.TextRange.Text = $t2Data[$r][$c]
+    }
 }
-$rowsAge = @(
+Style-Table $t2 7 3 $colNavy 13.5
+for ($r = 2; $r -le 7; $r++) {
+    $t2.Cell($r, 1).Shape.TextFrame.TextRange.Font.Bold = -1
+    $t2.Cell($r, 3).Shape.TextFrame.TextRange.Font.Bold = -1
+    $t2.Cell($r, 3).Shape.TextFrame.TextRange.Font.Color.RGB = $colBlue
+}
+
+
+# ==============================================================================
+# SLIDE 3: 【第1部】来場者アンケート集計①：基本情報（クロスなし・事実説明）
+# ==============================================================================
+$s3 = $pres.Slides.Add(3, 12)
+Add-Header $s3 "第1部：単純集計①" "来場者アンケート結果①：基本情報（年齢・性別・お住まい）" "有効回答236名。年代は50〜70歳代が中心（計60.6%）、性別は女性が64.8%、お住まいは八千代市内が72.5%" 3 $colBlue
+
+# 左カード：年齢分布グラフ
+Add-Card $s3 24 124 470 392 "1. 年齢別の回答数・割合（N=236）" $colBlue
+$ageList = @(
+    @("10歳代", "9名 (3.8%)", 3.8, $colSlate),
+    @("20歳代", "9名 (3.8%)", 3.8, $colSlate),
+    @("30歳代", "12名 (5.1%)", 5.1, $colSlate),
+    @("40歳代", "33名 (14.0%)", 14.0, $colBlue),
+    @("50歳代", "62名 (26.3%)", 26.3, $colNavy),
+    @("60歳代", "39名 (16.5%)", 16.5, $colBlue),
+    @("70歳代", "42名 (17.8%)", 17.8, $colBlue),
+    @("80歳代", "25名 (10.6%)", 10.6, $colSlate),
+    @("90歳代", "2名 (0.8%)", 0.8, $colMuted),
+    @("未記入", "3名 (1.3%)", 1.3, $colMuted)
+)
+for ($i = 0; $i -lt $ageList.Count; $i++) {
+    $y = 172 + ($i * 33)
+    $row = $ageList[$i]
+    Add-HBar $s3 38 $y 76 220 $row[0] $row[1] ($row[2] * 3.0) $row[3] 13.5
+}
+
+# 右上カード：お住まい・性別グラフ
+Add-Card $s3 510 124 426 200 "2. お住まい・性別の内訳（N=236）" $colTeal
+Add-HBar $s3 526 172 100 155 "八千代市内" "171名 (72.5%)" 72.5 $colBlue 14
+Add-HBar $s3 526 202 100 155 "八千代市外" "62名 (26.3%)" 26.3 $colTeal 14
+Add-HBar $s3 526 232 100 155 "女性" "153名 (64.8%)" 64.8 $colAmber 14
+Add-HBar $s3 526 262 100 155 "男性" "81名 (34.3%)" 34.3 $colSlate 14
+Add-Text $s3 526 292 396 24 "※未記入：お住まい 3名（1.3%） ／ 性別 2名（0.8%）" 12.5 $colMuted $false 1 | Out-Null
+
+# 右下カード：結果説明テキスト（考察なし・客観的記述）
+Add-Card $s3 510 336 426 180 "基本情報 集計結果の説明" $colNavy
+$s3Desc = @"
+・ブース来場者268名のうち、有効回答数は236名（回答率88.1%）であった。
+・年齢別では50歳代が62名（26.3%）で最も多く、次いで70歳代が42名（17.8%）、60歳代が39名（16.5%）、40歳代が33名（14.0%）であった。
+・性別は女性が153名（64.8%）、男性が81名（34.3%）であった。
+・お住まいは八千代市内が171名（72.5%）、八千代市外が62名（26.3%）であった。
+"@
+Add-Text $s3 524 382 398 128 $s3Desc 13.8 $colNavy $false 1 | Out-Null
+
+
+# ==============================================================================
+# SLIDE 4: 【第1部】来場者アンケート集計②：Q1・Q2・Q3（クロスなし・事実説明）
+# ==============================================================================
+$s4 = $pres.Slides.Add(4, 12)
+Add-Header $s4 "第1部：単純集計②" "来場者アンケート結果②：Q1（出展評価）・Q2（認知度）・Q3（当院評価）" "血管年齢（72.9%）・筋肉量（66.5%）が高評価。初認知は28.4%、当院を「利用・検討したい」は計90.3%" 4 $colBlue
+
+# 左カード：Q1 ＆ Q2 ＆ Q3 グラフ
+Add-Card $s4 24 124 510 392 "Q1〜Q3 設問別の回答数・割合（N=236）" $colBlue
+
+Add-Text $s4 38 168 480 24 "【Q1】本日参考になった内容（複数回答）" 14 $colBlue $true 1 | Out-Null
+Add-HBar $s4 38 194 160 190 "血管年齢測定" "172名 (72.9%)" 72.9 $colBlue 13.5
+Add-HBar $s4 38 220 160 190 "筋肉量測定(InBody)" "157名 (66.5%)" 66.5 $colTeal 13.5
+Add-HBar $s4 38 246 160 190 "栄養レッスン" "57名 (24.2%)" 24.2 $colSlate 13.5
+Add-HBar $s4 38 272 160 190 "人生会議(終活)の案内" "41名 (17.4%)" 17.4 $colSlate 13.5
+Add-HBar $s4 38 298 160 190 "お薬相談" "32名 (13.6%)" 13.6 $colSlate 13.5
+
+Add-Text $s4 38 330 480 24 "【Q2】これまで当院をご存知でしたか？（単一回答）" 14 $colAmber $true 1 | Out-Null
+Add-HBar $s4 38 356 160 190 "名前や場所は知っている" "126名 (53.4%)" 53.4 $colBlue 13.5
+Add-HBar $s4 38 382 160 190 "今日初めて知った" "67名 (28.4%)" 28.4 $colAmber 13.5
+Add-HBar $s4 38 408 160 190 "よく知っている(利用有)" "39名 (16.5%)" 16.5 $colTeal 13.5
+
+Add-Text $s4 38 438 480 24 "【Q3】万が一の際、当院を利用したいですか？（単一回答）" 14 $colTeal $true 1 | Out-Null
+Add-HBar $s4 38 462 160 190 "候補として検討したい" "153名 (64.8%)" 64.8 $colBlue 13.5
+Add-HBar $s4 38 486 160 190 "ぜひ利用したい" "60名 (25.4%)" 25.4 $colTeal 13.5
+
+# 右カード：結果説明テキスト（考察なし）
+Add-Card $s4 548 124 388 392 "Q1・Q2・Q3 集計結果の説明" $colNavy
+$s4Desc = @"
+【Q1：今回の出展内容の評価】
+・「血管年齢測定」が172名（72.9%）で最も多く、次いで「筋肉量測定」が157名（66.5%）であった。
+・続いて「栄養レッスン」が57名（24.2%）、「人生会議の案内」が41名（17.4%）、「お薬相談」が32名（13.6%）であった。
+
+【Q2：地域における当院の現在の認知度】
+・「名前や場所は知っている」が126名（53.4%）で半数を超え、「今日初めて知った」が67名（28.4%）、「よく知っている」が39名（16.5%）、未記入が4名（1.7%）であった。
+
+【Q3：アンケート時の当院の評価】
+・「候補の一つとして検討したい」が153名（64.8%）、「ぜひ利用したい」が60名（25.4%）で、合計213名（90.3%）であった。
+・「他の病院を選ぶ・わからない」は17名（7.2%）、未記入は6名（2.5%）であった。
+"@
+Add-Text $s4 562 174 360 330 $s4Desc 13.8 $colNavy $false 1 | Out-Null
+
+
+# ==============================================================================
+# SLIDE 5: 【第1部】来場者アンケート集計③：Q4・Q5（クロスなし・事実説明）
+# ==============================================================================
+$s5 = $pres.Slides.Add(5, 12)
+Add-Header $s5 "第1部：単純集計③" "来場者アンケート結果③：Q4（健康課題のチェック）・Q5（来年度へのヒント）" "健康課題は「転倒（39.4%）」「栄養（33.5%）」「認知機能（33.1%）」「介護・終活（30.1%）」が各3割超" 5 $colBlue
+
+# 左カード：Q4グラフ ＆ 説明
+Add-Card $s5 24 124 460 392 "Q4. 健康について気になること（複数回答・N=236）" $colBlue
+Add-HBar $s5 38 176 150 160 "足腰の衰え・転倒" "93名 (39.4%)" 39.4 $colBlue 14
+Add-HBar $s5 38 210 150 160 "食事・栄養バランス" "79名 (33.5%)" 33.5 $colTeal 14
+Add-HBar $s5 38 244 150 160 "物忘れ・認知機能" "78名 (33.1%)" 33.1 $colAmber 14
+Add-HBar $s5 38 278 150 160 "将来の介護や終活" "71名 (30.1%)" 30.1 $colNavy 14
+Add-HBar $s5 38 312 150 160 "とくにない" "34名 (14.4%)" 14.4 $colSlate 14
+Add-HBar $s5 38 346 150 160 "薬の飲み方" "11名 (4.7%)" 4.7 $colMuted 14
+Add-HBar $s5 38 380 150 160 "その他" "11名 (4.7%)" 4.7 $colMuted 14
+
+$s5Q4Desc = "【Q4 集計結果の説明】`n・「足腰の衰え・転倒」が93名（39.4%）で最も多く、「食事・栄養バランス」79名（33.5%）、「物忘れ・認知機能」78名（33.1%）、「将来の介護や終活」71名（30.1%）の上位4項目が30%を超えた。`n・「その他（11名）」には血圧、糖尿病、ひざの痛み、五十肩、むくみ等が記載された。"
+Add-Text $s5 38 414 432 96 $s5Q4Desc 13 $colNavy $false 1 | Out-Null
+
+# 右カード：Q5 自由記述の分類表と説明
+Add-Card $s5 498 124 438 392 "Q5. 来年に期待する内容（自由記述39件の内訳）" $colTeal
+$t5 = $s5.Shapes.AddTable(6, 3, 512, 174, 410, 210).Table
+$t5.Columns.Item(1).Width = 175
+$t5.Columns.Item(2).Width = 65
+$t5.Columns.Item(3).Width = 170
+$t5Data = @(
+    @("記述カテゴリ", "件数", "主な記述内容（抜粋）"),
+    @("運動・転倒・骨密度測定", "12件", "自宅ストレッチ、運動体験、骨密度・バランス測定"),
+    @("今年度と同様の測定継続", "11件", "今年と同じ内容、筋肉量・血管年齢測定の継続"),
+    @("認知機能・フレイル測定", "6件", "認知機能チェック、体力測定、フレイル予防"),
+    @("介護・薬・医療相談", "4件", "介護相談、入院時の薬、症状別の受診科案内"),
+    @("運営・備品への要望", "3件", "記入用バインダー、靴入れ・靴ベラ、順路表示")
+)
+for ($r = 0; $r -lt 6; $r++) {
+    for ($c = 0; $c -lt 3; $c++) {
+        $t5.Cell($r+1, $c+1).Shape.TextFrame.TextRange.Text = $t5Data[$r][$c]
+    }
+}
+Style-Table $t5 6 3 $colNavy 12.5
+
+$s5Q5Desc = "【Q5 集計結果の説明】`n・自由記述は計39件（特になし3件含む）であった。`n・運動指導や骨密度・転倒チェックを求める声が12件、今年度と同様の測定継続を求める声が11件、認知機能・フレイル測定を求める声が6件であった。"
+Add-Text $s5 512 398 410 106 $s5Q5Desc 13 $colNavy $false 1 | Out-Null
+
+
+# ==============================================================================
+# SLIDE 6: 【第2部】スタッフアンケートの質問事項とそこから見えること
+# ==============================================================================
+$s6 = $pres.Slides.Add(6, 12)
+Add-Header $s6 "第2部：スタッフ調査" "スタッフアンケートの質問事項と各設問から見えること" "参加した6部署・全14名（現在13名回答済）を対象に、出展意義・貢献度・広さ・人員配置・来年度改善点を調査" 6 $colTeal
+
+$t6 = $s6.Shapes.AddTable(7, 3, 24, 128, 912, 386).Table
+$t6.Columns.Item(1).Width = 280
+$t6.Columns.Item(2).Width = 180
+$t6.Columns.Item(3).Width = 452
+
+$t6Data = @(
+    @("質問項目", "回答形式", "この質問から何が見えるか"),
+    @("① 今回のどーんと祭に参加して`n    良かったですか？（＋②理由）", "はい ／ いいえ`n＋ 自由記述", "出展に対するスタッフの満足度と、参加を通じて得た実感（地域PRや多職種連携など）"),
+    @("③ 自部署の出展内容や役割は地域住民に`n    貢献できる内容でしたか？（＋④理由）", "はい ／ いいえ`n＋ 自由記述", "自部署の企画・役割が地域貢献につながったかどうかのスタッフ自身の評価"),
+    @("⑤ 今回3区画を借りて出展しましたが`n    広さはいかがでしたか？（＋⑥問題点）", "問題なし ／ 問題あり`n＋ 自由記述", "3区画というスペースの妥当性と、広さに関して現場で生じた具体的な問題点"),
+    @("⑦ 今回の人員配置（部署参加人数）は`n    適切でしたか？（＋⑧問題点）", "問題なし ／ 問題あり`n＋ 自由記述", "各部署の参加人数の妥当性と、休憩時間や誘導など人員面で生じた具体的な問題点"),
+    @("⑨ 来年も自部署が参加する必要性は`n    あると考えますか？（＋⑩理由）", "はい ／ いいえ`n＋ 自由記述", "来年度の継続参加に対する各部署スタッフの意向とその理由"),
+    @("⑪ 来年に向けて改善・強化・`n    取り入れた方がよいこと", "自由記述（箇条書き）", "来年度のブース運営・設備・広報に向けた現場スタッフからの具体的な改善提案")
+)
+for ($r = 0; $r -lt 7; $r++) {
+    for ($c = 0; $c -lt 3; $c++) {
+        $t6.Cell($r+1, $c+1).Shape.TextFrame.TextRange.Text = $t6Data[$r][$c]
+    }
+}
+Style-Table $t6 7 3 $colNavy 13.5
+for ($r = 2; $r -le 7; $r++) {
+    $t6.Cell($r, 1).Shape.TextFrame.TextRange.Font.Bold = -1
+    $t6.Cell($r, 3).Shape.TextFrame.TextRange.Font.Bold = -1
+    $t6.Cell($r, 3).Shape.TextFrame.TextRange.Font.Color.RGB = $colTeal
+}
+
+
+# ==============================================================================
+# SLIDE 7: 【第2部】スタッフアンケート集計①：選択式5設問の結果と事実説明
+# ==============================================================================
+$s7 = $pres.Slides.Add(7, 12)
+Add-Header $s7 "第2部：スタッフ集計①" "スタッフアンケート結果①：選択式5設問の集計（対象14名中13名回答）" "参加満足度は100%、地域貢献実感は92.3%。一方、人員配置は76.9%、3区画の広さは38.5%が「問題あり」と回答" 7 $colTeal
+
+# 左カード：5設問のグラフ
+Add-Card $s7 24 124 496 392 "選択式5設問の回答数・割合（N=13 / 対象14名）" $colTeal
+
+Add-Text $s7 38 170 460 22 "① どーんと祭に参加して良かったか" 14 $colNavy $true 1 | Out-Null
+Add-HBar $s7 38 194 140 190 "はい" "13名 (100.0%)" 100.0 $colTeal 13.5
+
+Add-Text $s7 38 232 460 22 "③ 自部署の役割は地域住民に貢献できたか" 14 $colNavy $true 1 | Out-Null
+Add-HBar $s7 38 256 140 190 "はい" "12名 (92.3%)" 92.3 $colBlue 13.5
+Add-HBar $s7 38 280 140 190 "いいえ" "1名 (7.7%)" 7.7 $colMuted 13.5
+
+Add-Text $s7 38 316 460 22 "⑤ 3区画の広さはいかがだったか" 14 $colNavy $true 1 | Out-Null
+Add-HBar $s7 38 340 140 190 "問題なし" "8名 (61.5%)" 61.5 $colSlate 13.5
+Add-HBar $s7 38 364 140 190 "問題あり" "5名 (38.5%)" 38.5 $colRed 13.5
+
+Add-Text $s7 38 400 460 22 "⑦ 人員配置（部署参加人数）は適切だったか" 14 $colNavy $true 1 | Out-Null
+Add-HBar $s7 38 424 140 190 "問題あり" "10名 (76.9%)" 76.9 $colRed 13.5
+Add-HBar $s7 38 448 140 190 "問題なし" "3名 (23.1%)" 23.1 $colSlate 13.5
+
+Add-Text $s7 38 478 460 28 "⑨ 来年も参加する必要性はあるか：はい 11名(84.6%) ／ いいえ 2名(15.4%)" 13.5 $colNavy $true 1 | Out-Null
+
+# 右カード：結果説明テキスト（考察なし）
+Add-Card $s7 534 124 402 392 "スタッフ選択式設問 集計結果の説明" $colNavy
+$s7Desc = @"
+・参加スタッフ14名のうち、現時点で回答が完了した13名の集計結果である。
+
+・設問①（参加して良かったか）は、13名全員（100.0%）が「はい」と回答した。
+
+・設問③（地域住民に貢献できたか）は、「はい」が12名（92.3%）、「いいえ」が1名（7.7%）であった。
+
+・設問⑤（3区画の広さ）は、「問題なし」が8名（61.5%）、「問題あり」が5名（38.5%）であった。
+
+・設問⑦（人員配置の適切さ）は、「問題あり」が10名（76.9%）、「問題なし」が3名（23.1%）であった。
+
+・設問⑨（来年の自部署の参加必要性）は、「はい」が11名（84.6%）、「いいえ」が2名（15.4%）であった。
+"@
+Add-Text $s7 548 174 374 330 $s7Desc 13.8 $colNavy $false 1 | Out-Null
+
+
+# ==============================================================================
+# SLIDE 8: 【第2部】スタッフアンケート集計②：自由記述の網羅的集約（考察なし）
+# ==============================================================================
+$s8 = $pres.Slides.Add(8, 12)
+Add-Header $s8 "第2部：スタッフ集計②" "スタッフアンケート結果②：各設問の自由記述まとめ（考察なし）" "参加意義・多職種連携への肯定的な記述と、広さ・人員・運営面での具体的な問題点が記載された" 8 $colTeal
+
+$t8 = $s8.Shapes.AddTable(6, 2, 24, 128, 912, 386).Table
+$t8.Columns.Item(1).Width = 240
+$t8.Columns.Item(2).Width = 672
+
+$t8Data = @(
+    @("自由記述の設問項目", "スタッフから記載された主な回答内容（事実の集約）"),
+    @("② 参加して良かった理由`n（13名全員が「はい」）", "・地域住民と直接話し、当院をPRできた。生活習慣や悩みをリアルに伺えた。`n・他部門メンバーと同じ目標に向かって一致団結し、普段できないコミュニケーションを取れた。`n・多職種連携ができた。多職種と楽しく地域社会に関われた。当院の結束力が感じられた。"),
+    @("④ 地域貢献できた理由`n（はい12名 ／ いいえ1名）", "・筋肉量（InBody）や血管年齢をもとに、運動・生活・栄養指導ができ、お薬カレンダー配布も喜ばれた。`n・栄養相談はInBodyの結果ありきの方が話しやすかった。専門職から多様なアドバイスができた。`n・（「いいえ」1名の理由）：人生会議というテーマが来場者が求めていたものか判断が難しかったため。"),
+    @("⑥ 3区画の広さの問題点`n（問題あり 5名）", "・常に混雑して狭かった。満席の状態が続き、移動時に狭そうだった。`n・お待ちの方々が座れず、外出をお勧めして対応した。`n・InBodyのスペースが狭かった。InBodyを増やすなど規模を広げるなら、もう半テント（4区画）必要。"),
+    @("⑧ 人員配置の問題点`n（問題あり 10名）", "・来場者が多く、休憩時間がほとんど取れなかった（長くても10〜15分×2回程度）。2日連続出勤はきつかった。`n・並んでいる方や待っている方を公平に案内する「誘導係（2名程度）」と「全体統括」が必要だった。`n・1人が休憩に入ると回らないため、リハ・測定スタッフ、看護、事務の増員が必要だった。"),
+    @("⑩ 来年参加の理由・`n⑪ 来年に向けた改善提案", "・当院の認知度がまだ低い（医療センターのブースと誤認している人もいた）ため、広報誌や病院紹介パネルが必要。`n・InBodyは待ち時間が30分以上となり最後は並ぶのを中止したため、2台体制（1台では150人が限度）が必要。`n・整理券方式や順路固定（栄養→薬剤→MSW→看護）、ノベルティ（ボールペン・防災グッズ等）増量、休憩1時間確保。")
+)
+for ($r = 0; $r -lt 6; $r++) {
+    for ($c = 0; $c -lt 2; $c++) {
+        $t8.Cell($r+1, $c+1).Shape.TextFrame.TextRange.Text = $t8Data[$r][$c]
+    }
+}
+Style-Table $t8 6 2 $colNavy 13
+for ($r = 2; $r -le 6; $r++) {
+    $t8.Cell($r, 1).Shape.TextFrame.TextRange.Font.Bold = -1
+}
+
+
+# ==============================================================================
+# SLIDE 9: 【第3部：達成報告・整理】KPI・3つの目的達成報告 ＆ 得られたこと
+# ==============================================================================
+$s9 = $pres.Slides.Add(9, 12)
+Add-Header $s9 "第3部：KPI・目的達成" "起案書のKPI・3つの目的達成報告 と 今回の出展で得られたこと" "ブース来場268名（目標比134%）・アンケート236名（目標比472%）を達成し、起案の3目的すべてを遂行" 9 $colAmber
+
+# 左カード：KPIと3目的の達成状況
+Add-Card $s9 24 124 470 392 "1. 起案書のKPIおよび3つの目的の達成報告" $colBlue
+
+Add-Text $s9 38 170 440 24 "■ KPI（目標数値）の達成状況" 14.5 $colNavy $true 1 | Out-Null
+Add-HBar $s9 38 198 155 155 "ブース立ち寄り(目標200)" "268名 (134.0%)" 100.0 $colBlue 13.5
+Add-HBar $s9 38 228 155 155 "アンケート回答(目標50)" "236名 (472.0%)" 100.0 $colTeal 13.5
+Add-Text $s9 38 256 442 22 "※内訳：1日目 来場120名（回答106名） ／ 2日目 来場148名（回答130名）" 12.5 $colSlate $false 1 | Out-Null
+
+$s9Purpose = @"
+■ 起案書の3つの目的の達成状況
+【目的① 基本方針の遂行（地域貢献）：達成】
+・268名に測定・専門職相談を提供し、スタッフの92.3%が貢献を実感。Q1でも血管年齢72.9%・筋肉量66.5%等が高く評価された。
+
+【目的② 経営的価値（認知・集患）：達成】
+・初認知67名（28.4%）・名前のみ認知126名（53.4%）と直接接点を持ち、Q3で90.3%（213名）から「将来利用・検討したい」との評価を獲得した。
+
+【目的③ 組織的価値（多職種連携の醸成）：達成】
+・6部署14名が協働運営し、スタッフ満足度100%を達成。「他部門と一致団結できた」「測定結果をもとに他職種へつなぐ連携が機能した」と連携基盤が強化された。
+"@
+Add-Text $s9 38 282 442 226 $s9Purpose 13 $colNavy $false 1 | Out-Null
+
+# 右カード：今回の出展で得られたこと（薄く淡々とした羅列）
+Add-Card $s9 508 124 428 392 "2. 今回の出展で得られたこと（事実の整理）" $colTeal
+$s9Facts = @"
+・2日間で計268名が来場し、236名分の地域住民アンケートデータを取得できたこと。
+
+・1日目は60歳代以上（52.8%）、2日目は40歳代以下が倍増（32.3%）し、土日で異なる年代層と接点を持てたこと。
+
+・八千代市内（72.5%）に加え、市外（26.3%・62名）の住民とも接点を持てたこと。
+
+・血管年齢測定と筋肉量測定が、住民の約7割から評価される集客コンテンツであると確認できたこと。
+
+・八千代市民であっても80.7%が当院を「全く知らない」か「名前・場所しか知らない」という現状が数値で判明したこと。
+
+・ブース体験者の90.3%（213名）が、万が一の際に当院を「利用・検討したい」と回答したこと。
+
+・今後の知名度向上策（定期的な健康教室）に向け、住民の関心が高い4つのテーマ（転倒・栄養・認知機能・介護終活）を把握できたこと。
+"@
+Add-Text $s9 522 172 400 334 $s9Facts 13.2 $colNavy $false 1 | Out-Null
+
+
+# ==============================================================================
+# SLIDE 10: 【第3部：考察・クロス分析①】1日目 vs 2日目の来場者基本情報の変化
+# ==============================================================================
+$s10 = $pres.Slides.Add(10, 12)
+Add-Header $s10 "第3部：クロス分析①" "1日目（106名）と 2日目（130名）の来場者層の違い（年齢・居住地）" "1日目は60代以上のシニア層が過半数（52.8%）。2日目は40代以下の若年・子育て世代が倍増（19.8%→32.3%）" 10 $colAmber
+
+# 左側：年代別 1日目 vs 2日目 比較テーブル
+Add-Card $s10 24 124 510 392 "年代別・居住地別の1日目 vs 2日目 比較表" $colAmber
+$t10 = $s10.Shapes.AddTable(8, 4, 38, 174, 482, 324).Table
+$t10.Columns.Item(1).Width = 152
+$t10.Columns.Item(2).Width = 106
+$t10.Columns.Item(3).Width = 112
+$t10.Columns.Item(4).Width = 112
+
+$t10Data = @(
+    @("属性区分", "全体 (236名)", "1日目 (106名)", "2日目 (130名)"),
     @("10〜30歳代（若年層）", "30名 (12.7%)", "12名 (11.3%)", "18名 (13.8%) ▲"),
     @("40歳代（子育て世代）", "33名 (14.0%)", "9名 (8.5%)", "24名 (18.5%) ▲2.7倍"),
     @("50歳代（最多層）", "62名 (26.3%)", "28名 (26.4%)", "34名 (26.2%)"),
     @("60〜70歳代（シニア層）", "81名 (34.3%)", "40名 (37.7%)", "41名 (31.5%)"),
     @("80〜90歳代（高齢層）", "27名 (11.4%)", "16名 (15.1%)", "11名 (8.5%) ▼"),
-    @("未記入", "3名 (1.3%)", "1名 (0.9%)", "2名 (1.5%)")
+    @("八千代市内 在住", "171名 (72.5%)", "75名 (70.8%)", "96名 (73.8%) ▲"),
+    @("八千代市外 在住", "62名 (26.3%)", "29名 (27.4%)", "33名 (25.4%)")
 )
-for ($r=0; $r -lt $rowsAge.Count; $r++) {
-    for ($c=0; $c -lt 4; $c++) {
-        $cell = $tblAge.Cell($r+2, $c+1)
-        $cell.Shape.Fill.ForeColor.RGB = if ($r -eq 1) { $colLightAmb } elseif ($r % 2 -eq 0) { $colWhite } else { $colBgGray }
-        $tr = $cell.Shape.TextFrame.TextRange
-        $tr.Text = $rowsAge[$r][$c]
-        $tr.Font.NameFarEast = "Meiryo UI"
-        $tr.Font.Size = 11
-        $tr.Font.Bold = if ($r -eq 1 -or $r -eq 2) { -1 } else { 0 }
-        $tr.Font.Color.RGB = if ($r -eq 1 -and $c -eq 3) { $colRed } else { $colTextDark }
+for ($r = 0; $r -lt 8; $r++) {
+    for ($c = 0; $c -lt 4; $c++) {
+        $t10.Cell($r+1, $c+1).Shape.TextFrame.TextRange.Text = $t10Data[$r][$c]
     }
 }
+Style-Table $t10 8 4 $colNavy 13
+# 40歳代の行を強調
+for ($c = 1; $c -le 4; $c++) {
+    $t10.Cell(3, $c).Shape.Fill.ForeColor.RGB = $colSoftAmber
+    $t10.Cell(3, $c).Shape.TextFrame.TextRange.Font.Bold = -1
+}
+$t10.Cell(3, 4).Shape.TextFrame.TextRange.Font.Color.RGB = $colRed
 
-Add-Rect $s2 40 442 498 58 $colLightTeal (RGB 153 246 228) $true | Out-Null
-Add-Text $s2 52 448 476 48 "💡 アナリスト考察：1日目は健康意識の高い60代以上が過半数（52.8%）。2日目は40代以下が32.3%（42名）へと倍増し、親世代の介護・入院を支えるキーパーソン層へ直接アプローチできた。" 11.2 $colTextDark $true 1 | Out-Null
+# 右側：分析テキスト
+Add-Card $s10 548 124 388 392 "日別クロス集計から見える特徴" $colNavy
+$s10Desc = @"
+【1. 年齢層の明確な変化】
+・1日目（土曜）は、60歳代以上が56名（52.8%）と過半数を占め、シニア当事者層が中心であった。
+・2日目（日曜）は、10〜40歳代の若い世代・子育て世代が1日目の21名（19.8%）から42名（32.3%）へと倍増した。特に40歳代は9名（8.5%）から24名（18.5%）へと2.7倍に増加した。
 
-# Right Top Card: お住まい（八千代市内 vs 市外）
-Add-Rect $s2 570 126 366 202 $colWhite $colBorderB $true | Out-Null
-Add-Text $s2 586 136 334 26 "🏠 お住まい内訳（広域集客効果）" 15 $colNavy $true 1 | Out-Null
-Add-HBar $s2 586 172 96 130 "八千代市内" "171名 (72.5%)" 72.5 $colBlue
-Add-HBar $s2 586 204 96 130 "八千代市外" "62名 (26.3%)" 26.3 $colTeal
-Add-HBar $s2 586 236 96 130 "未記入" "3名 (1.3%)" 1.3 (RGB 148 163 184)
-Add-Text $s2 586 270 338 48 "・1日目：市内 70.8%(75名) ／ 市外 27.4%(29名)`n・2日目：市内 73.8%(96名) ／ 市外 25.4%(33名)`n👉 全体の約4人に1人（62名）が市外からの広域来場！" 11 $colTextDark $false 1 | Out-Null
+【2. 居住地（市内・市外）の変化】
+・2日目は地元の家族連れの増加に伴い、八千代市内の回答者が1日目の75名（70.8%）から96名（73.8%）へと21名増加した。
+・また両日を通じて約4人に1人（計62名・26.3%）が八千代市外からの来場者であった。
 
-# Right Bottom Card: 性別内訳
-Add-Rect $s2 570 342 366 174 $colWhite $colBorderB $true | Out-Null
-Add-Text $s2 586 352 334 26 "🚻 性別内訳（全236名）" 15 $colNavy $true 1 | Out-Null
-Add-HBar $s2 586 388 96 130 "女性" "153名 (64.8%)" 64.8 (RGB 219 39 119)
-Add-HBar $s2 586 420 96 130 "男性" "81名 (34.3%)" 34.3 $colBlue
-Add-Text $s2 586 456 338 48 "・女性が約65%（1日目62.3% → 2日目66.9%）を占め、家族の健康管理や栄養・測定への関心が非常に高い。" 11 $colTextDark $false 1 | Out-Null
-
-# ==============================================================================
-# SLIDE 3: Q1 ブース体験評価 ＆ Q2 認知度・Q3 利用意向
-# ==============================================================================
-$s3 = $pres.Slides.Add(3, 12)
-Add-Header $s3 "Q1・Q2・Q3 分析" "ブース体験評価（Q1）と 当院認知度（Q2）・利用意向（Q3）" "「血管年齢測定(72.9%)」「筋肉量測定(66.5%)」が集客を牽引し、新規認知28.4%・利用意向90.3%を獲得！" 3
-
-# Left Card: Q1
-Add-Rect $s3 24 126 450 390 $colWhite $colBorderB $true | Out-Null
-Add-Text $s3 40 136 420 28 "🩺 Q1. 本日参考になった内容（複数回答）" 15 $colNavy $true 1 | Out-Null
-Add-HBar $s3 40 180 148 160 "① 血管年齢測定" "172名 (72.9%)" 72.9 $colBlue
-Add-HBar $s3 40 218 148 160 "② 筋肉量測定(InBody)" "157名 (66.5%)" 66.5 $colTeal
-Add-HBar $s3 40 256 148 160 "③ 栄養レッスン" "57名 (24.2%)" 24.2 $colAmber
-Add-HBar $s3 40 294 148 160 "④ 人生会議(終活)案内" "41名 (17.4%)" 17.4 (RGB 109 40 217)
-Add-HBar $s3 40 332 148 160 "⑤ お薬相談" "32名 (13.6%)" 13.6 (RGB 71 85 105)
-
-Add-Rect $s3 40 376 418 122 $colLightAmb (RGB 253 230 138) $true | Out-Null
-Add-Text $s3 52 384 396 108 "📌 重要ファクト（機会損失の発生）：`n・血管年齢と筋肉量（InBody）が圧倒的な集客フックとして機能。`n・ただし2日目はInBody希望者が殺到し、終盤に並ぶのを中止（入場制限）せざるを得なかったため、筋肉量測定の回答率が1日目(76.4%)→2日目(58.5%)へ低下。来期の「InBody 2台体制・4区画化」でさらなる伸びしろあり。" 11 $colTextDark $false 1 | Out-Null
-
-# Right Top Card: Q2 認知度
-Add-Rect $s3 490 126 446 188 $colWhite $colBorderB $true | Out-Null
-Add-Text $s3 506 136 414 26 "🏥 Q2. これまで当院をご存知でしたか？" 15 $colNavy $true 1 | Out-Null
-Add-HBar $s3 506 172 175 130 "名前や場所は知っている" "126名 (53.4%)" 53.4 $colBlue
-Add-HBar $s3 506 204 175 130 "今日初めて知った【新規】" "67名 (28.4%)" 28.4 $colAmber
-Add-HBar $s3 506 236 175 130 "よく知っている(利用経験有)" "39名 (16.5%)" 16.5 $colTeal
-Add-Text $s3 506 268 416 38 "※「今日初めて知った」67名（28.4%）への直接認知獲得に成功！`n※2日目は「利用経験あり」が10.4%→21.5%（28名）へ倍増。" 11 $colTextDark $true 1 | Out-Null
-
-# Right Bottom Card: Q3 利用意向
-Add-Rect $s3 490 328 446 188 $colWhite $colBorderB $true | Out-Null
-Add-Text $s3 506 338 414 26 "🤝 Q3. 万が一の際、当院を利用したいですか？" 15 $colNavy $true 1 | Out-Null
-Add-HBar $s3 506 374 175 130 "候補の一つとして検討" "153名 (64.8%)" 64.8 $colBlue
-Add-HBar $s3 506 406 175 130 "ぜひ利用したい" "60名 (25.4%)" 25.4 $colTeal
-Add-HBar $s3 506 438 175 130 "他の病院・わからない" "17名 (7.2%)" 7.2 (RGB 148 163 184)
-Add-Rect $s3 506 468 414 36 $colLightTeal (RGB 153 246 228) $true | Out-Null
-Add-Text $s3 516 474 396 26 "✅ 「ぜひ利用＋検討したい」合計 213名（90.3%）が好意的意向！" 12 $colTeal $true 1 | Out-Null
-
-# ==============================================================================
-# SLIDE 4: Q4 地域の健康課題ニーズ ＆ Q5 自由記述（今後の健康教室テーマ）
-# ==============================================================================
-$s4 = $pres.Slides.Add(4, 12)
-Add-Header $s4 "Q4・Q5 ニーズ分析" "地域の健康課題（Q4）と 来年への期待（Q5自由記述）" "「転倒予防(39.4%)」「栄養(33.5%)」「認知機能(33.1%)」「介護・終活(30.1%)」の4大ニーズが明確化！" 4
-
-# Left Card: Q4
-Add-Rect $s4 24 126 450 390 $colWhite $colBorderB $true | Out-Null
-Add-Text $s4 40 136 420 28 "🏃 Q4. 現在健康で気になること（複数回答）" 15 $colNavy $true 1 | Out-Null
-Add-HBar $s4 40 176 152 155 "① 足腰の衰え・転倒" "93名 (39.4%)" 39.4 $colBlue
-Add-HBar $s4 40 210 152 155 "② 食事・栄養バランス" "79名 (33.5%)" 33.5 $colTeal
-Add-HBar $s4 40 244 152 155 "③ 物忘れ・認知機能" "78名 (33.1%)" 33.1 $colAmber
-Add-HBar $s4 40 278 152 155 "④ 将来の介護や終活" "71名 (30.1%)" 30.1 (RGB 109 40 217)
-Add-HBar $s4 40 312 152 155 "⑤ とくにない" "34名 (14.4%)" 14.4 (RGB 148 163 184)
-Add-HBar $s4 40 346 152 155 "⑥ 薬の飲み方 / その他" "各11名 (4.7%)" 4.7 (RGB 100 116 139)
-
-Add-Rect $s4 40 384 418 116 $colLightBlue $colBorderB $true | Out-Null
-Add-Text $s4 52 392 396 100 "💡 健康教室のテーマ設定への示唆：`n・起案目的の一つである「地域住民が抱える健康課題の情報収集」において、上位4項目がいずれも30%超（70〜93名）の高水準で並んだ。`n・PT/OTによる「転倒予防・自宅ストレッチ」、管理栄養士の「栄養講座」、認知症予防、ACP（人生会議）を柱とした健康教室が極めて有望。" 11 $colTextDark $false 1 | Out-Null
-
-# Right Card: Q5 Free Comments
-Add-Rect $s4 490 126 446 390 $colWhite $colBorderB $true | Out-Null
-Add-Text $s4 506 136 414 28 "💬 Q5. 来年に期待する内容・来場者の声（抜粋）" 15 $colNavy $true 1 | Out-Null
-
-$q5Text = @"
-【① 運動・転倒予防・骨密度チェックの要望（多数）】
-・「自宅の椅子に座っている時のストレッチや筋肉をつける姿勢を知りたい」
-・「日々できるカンタンな運動体験」「バランス・転倒危険度チェック」
-・「骨粗しょう症・骨密度チェックと対策をしてほしい」
-
-【② 認知機能・フレイルチェックの要望】
-・「認知機能の衰えチェック、体力測定をしてほしい」（複数名）
-・「認知症・フレイル予防について知りたい」
-
-【③ 介護・薬・医療相談の要望】
-・「介護生活の相談、食事、家族が入院した際の薬について」
-・「こんな症状には何科に行ったらいいか知りたい」
-
-【④ 当院への好意的な評価・運営改善ヒント】
-・「マンションで5人ほど入院した方がいて、とてもリハビリが良かったとの事」
-・「リハビリセンサーや測定が参考になりとても良かった。来年も期待」
-・「InBodyで靴を脱ぐ際、靴入れと靴ベラ、記入用バインダーがあると助かる」
+【3. 土日2日間出展の効果】
+・土曜日は「シニアご本人層」、日曜日は「将来親の介護・入院に関わる40〜50代の家族層」にそれぞれ多くアプローチできた。
 "@
-Add-Text $s4 506 170 416 334 $q5Text 11.2 $colTextDark $false 1 | Out-Null
+Add-Text $s10 562 174 360 330 $s10Desc 13.8 $colNavy $false 1 | Out-Null
+
 
 # ==============================================================================
-# SLIDE 5: スタッフアンケート結果（12名）と 来期に向けた課題・改善提案
+# SLIDE 11: 【第3部：考察・クロス分析②】当院の弱点（八千代市内における知名度の低さ）
 # ==============================================================================
-$s5 = $pres.Slides.Add(5, 12)
-Add-Header $s5 "来期課題・提案" "スタッフアンケート結果（12名）と 次年度に向けた改善提案" "スタッフ満足度100%の一方、3区画では常時混雑し機会損失が発生。来期は「4区画化＋増員」を提案" 5
+$s11 = $pres.Slides.Add(11, 12)
+Add-Header $s11 "第3部：当院の弱点" "アンケート結果からわかる当院の弱点（八千代市内における知名度の低さ）" "八千代市民（171名）でも「よく知っている」は18.1%のみ。市民の80.7%が当院を「初めて知った・名前のみ」" 11 $colRed
 
-# Left Card: スタッフアンケート結果
-Add-Rect $s5 24 126 446 390 $colWhite $colBorderB $true | Out-Null
-Add-Text $s5 40 136 414 28 "🧑‍⚕️ 参加スタッフアンケート結果（回答12名）" 15 $colNavy $true 1 | Out-Null
+# 左カード：八千代市内（171名）の認知度グラフ ＋ 年代別内訳
+Add-Card $s11 24 124 496 392 "八千代市内居住者（171名）における当院の認知度" $colRed
 
-Add-HBar $s5 40 176 172 115 "参加して良かった（はい）" "12名 (100%)" 100.0 $colTeal
-Add-HBar $s5 40 210 172 115 "地域貢献できた（はい）" "11名 (91.7%)" 91.7 $colBlue
-Add-HBar $s5 40 244 172 115 "人員・配置に課題あり" "9名 (75.0%)" 75.0 $colRed
+Add-Text $s11 38 170 460 24 "■ 1. 八千代市内居住者（171名）のQ2回答内訳" 14.5 $colNavy $true 1 | Out-Null
+Add-HBar $s11 38 198 165 170 "よく知っている(利用有)" "31名 (18.1%)" 18.1 $colTeal 13.5
+Add-HBar $s11 38 228 165 170 "名前や場所は知っている" "102名 (59.6%)" 59.6 $colAmber 13.5
+Add-HBar $s11 38 258 165 170 "今日初めて知った" "36名 (21.1%)" 21.1 $colRed 13.5
 
-Add-Rect $s5 40 282 414 218 $colLightRed (RGB 254 202 202) $true | Out-Null
-$staffVoice = @"
-⚠️ 現場スタッフから挙がった具体的な課題（3区画・人員不足の影響）：
-1. 【スペース狭小による機会損失】
-   ・「3区画では常に混雑し狭かった。お待ち頂く方が座れず外出を勧めた」
-   ・「InBody測定希望者が多すぎて、最後は並ぶのを中止（お断り）した」
-2. 【休憩時間の未確保と誘導負担】
-   ・「休憩時間が全く取れなかった。シフト制で休憩を回せる人員が必要」
-   ・「呼び込み・誘導係、測定補助、事務スタッフの増員が必要」
-3. 【機器・備品の改善点】
-   ・「InBodyは2台体制が望ましい」「Wi-Fi環境の事前確認、靴ベラ・バインダー準備」
+Add-Rect $s11 38 290 468 38 $colSoftRed $colRed $false | Out-Null
+Add-Text $s11 46 295 452 28 "地元・八千代市民の 80.7%（138名）が「今日初めて知った」または「名前・場所のみ」" 13 $colRed $true 1 | Out-Null
+
+Add-Text $s11 38 338 460 24 "■ 2. 八千代市内の主要年代別「認知度」内訳" 14.5 $colNavy $true 1 | Out-Null
+$t11 = $s11.Shapes.AddTable(5, 4, 38, 366, 468, 134).Table
+$t11.Columns.Item(1).Width = 118
+$t11.Columns.Item(2).Width = 110
+$t11.Columns.Item(3).Width = 120
+$t11.Columns.Item(4).Width = 120
+$t11Data = @(
+    @("八千代市内 年代", "よく知っている", "名前・場所のみ", "今日初めて知った"),
+    @("市内 40歳代 (21名)", "3名 (14.3%)", "11名 (52.4%)", "7名 (33.3%)"),
+    @("市内 50歳代 (47名)", "4名 (8.5%)", "37名 (78.7%)", "6名 (12.8%)"),
+    @("市内 60歳代 (30名)", "4名 (13.3%)", "20名 (66.7%)", "6名 (20.0%)"),
+    @("市内 80歳代 (19名)", "3名 (15.8%)", "10名 (52.6%)", "6名 (31.6%)")
+)
+for ($r = 0; $r -lt 5; $r++) {
+    for ($c = 0; $c -lt 4; $c++) {
+        $t11.Cell($r+1, $c+1).Shape.TextFrame.TextRange.Text = $t11Data[$r][$c]
+    }
+}
+Style-Table $t11 5 4 $colNavy 12.5
+$t11.Cell(2, 4).Shape.TextFrame.TextRange.Font.Color.RGB = $colRed
+$t11.Cell(2, 4).Shape.TextFrame.TextRange.Font.Bold = -1
+$t11.Cell(3, 2).Shape.TextFrame.TextRange.Font.Color.RGB = $colRed
+$t11.Cell(3, 2).Shape.TextFrame.TextRange.Font.Bold = -1
+$t11.Cell(5, 4).Shape.TextFrame.TextRange.Font.Color.RGB = $colRed
+$t11.Cell(5, 4).Shape.TextFrame.TextRange.Font.Bold = -1
+
+# 右カード：弱点の説明テキスト
+Add-Card $s11 534 124 402 392 "データから見る当院の弱点（知名度の低さ）" $colRed
+$s11Desc = @"
+【1. 入院専門のリハ病院ゆえの構造的な認知課題】
+・当院は回復期リハビリテーション専門の入院病院（外来は退院患者のフォローのみ、介護保険は訪問・通所リハ）であるため、一般外来を持つ病院と比べて日常的に住民が接する機会が少ない。
+
+【2. 地元・八千代市民でも8割が詳細を知らない】
+・八千代市内在住者（171名）のうち、「よく知っている」は18.1%（31名）にとどまる。
+・市民の5人に1人（21.1%・36名）が「今日初めて当院を知った」と回答し、「名前や場所は知っている（59.6%）」と合わせると、市民の80.7%（138名）が当院の役割や中身を知らない状態にある。
+
+【3. 家族世代（40〜60代）・当事者世代（80代）の課題】
+・親の入院先を検討する市内40歳代の33.3%、当事者である市内80歳代の31.6%が「今日初めて知った」と回答し、市内50歳代でも「よく知っている」は8.5%のみであった。
 "@
-Add-Text $s5 50 290 396 202 $staffVoice 11 $colTextDark $false 1 | Out-Null
+Add-Text $s11 548 174 374 330 $s11Desc 13.5 $colNavy $false 1 | Out-Null
 
-# Right Card: 来期（次年度）への3大提案
-Add-Rect $s5 486 126 450 390 $colWhite $colBorderB $true | Out-Null
-Add-Text $s5 502 136 418 28 "🚀 来期（次年度）に向けた3つの改善提案" 15 $colNavy $true 1 | Out-Null
 
-# Proposal 1
-Add-Rect $s5 502 174 418 98 $colLightBlue $colBorderB $true | Out-Null
-Add-Text $s5 516 180 392 86 "提案①：出展ブースを「3区画 → 4区画」へ拡大`n・今年度は四役相談のもと3区画（実績予算21.4万円）で実施したが、目標の4.7倍（236名）が殺到し待合椅子不足・入場制限が発生。`n・当初起案の「4区画」を確保し、測定動線・待合スペース・相談ブースを分離することで取りこぼし（機会損失）をゼロにする。" 11.2 $colTextDark $false 1 | Out-Null
+# ==============================================================================
+# SLIDE 12: 【第3部：考察・クロス分析③】認知度（Q2）× 当院の評価（Q3）クロス分析
+# ==============================================================================
+$s12 = $pres.Slides.Add(12, 12)
+Add-Header $s12 "第3部：クロス分析③" "認知度（Q2）× アンケート時の当院の評価（Q3）クロス分析" "「今日初めて知った」層でも体験後は88.1%が好意的評価。「よく知っている」層は66.7%が「ぜひ利用したい」" 12 $colTeal
 
-# Proposal 2
-Add-Rect $s5 502 284 418 98 $colLightTeal (RGB 153 246 228) $true | Out-Null
-Add-Text $s5 516 290 392 86 "提案②：スタッフ増員による「休憩時間確保」と「誘導強化」`n・呼び込み/スタンプラリー誘導係・測定スタッフを増員し、交代制で確実に休憩時間を確保できるシフト体制を構築。`n・人気集中のInBodyは「2台体制」＋靴入れ・靴ベラ・バインダー完備で回転率を向上。" 11.2 $colTextDark $false 1 | Out-Null
+# 左カード：Q2×Q3 クロス集計グラフ＆表
+Add-Card $s12 24 124 500 392 "Q2（認知度）別の Q3（今後の利用意向）内訳" $colTeal
 
-# Proposal 3
-Add-Rect $s5 502 394 418 106 $colLightAmb (RGB 253 230 138) $true | Out-Null
-Add-Text $s5 516 400 392 94 "提案③：アンケートで判明した「4大健康課題」を健康教室へ展開`n・今回3割超のニーズが確認された「①転倒予防・骨密度」「②栄養」「③認知機能・フレイル」「④介護・終活」をテーマに院内・地域の健康教室を企画。`n・単発イベントで終わらせず、当院への継続的なファン化・受診/入院選択（利用意向90.3%）へつなげる。" 11.2 $colTextDark $false 1 | Out-Null
+Add-Text $s12 38 170 470 24 "■「ぜひ利用したい ＋ 候補として検討したい」の合計割合" 14 $colNavy $true 1 | Out-Null
+Add-HBar $s12 38 200 175 160 "今日初めて知った(67名)" "59名 (88.1%)" 88.1 $colAmber 13.5
+Add-HBar $s12 38 232 175 160 "名前・場所は知る(126名)" "118名 (93.7%)" 93.7 $colBlue 13.5
+Add-HBar $s12 38 264 175 160 "よく知っている(39名)" "36名 (92.3%)" 92.3 $colTeal 13.5
+
+Add-Text $s12 38 304 470 24 "■ Q2（認知度）× Q3（当院の評価）詳細クロス集計表" 14 $colNavy $true 1 | Out-Null
+$t12 = $s12.Shapes.AddTable(4, 4, 38, 332, 472, 160).Table
+$t12.Columns.Item(1).Width = 152
+$t12.Columns.Item(2).Width = 110
+$t12.Columns.Item(3).Width = 110
+$t12.Columns.Item(4).Width = 100
+$t12Data = @(
+    @("Q2 認知度区分", "ぜひ利用したい", "候補として検討", "他院・不明"),
+    @("今日初めて知った (67名)", "10名 (14.9%)", "49名 (73.1%)", "8名 (11.9%)"),
+    @("名前・場所は知る (126名)", "24名 (19.0%)", "94名 (74.6%)", "6名 (4.8%)"),
+    @("よく知っている (39名)", "26名 (66.7%)", "10名 (25.6%)", "3名 (7.7%)")
+)
+for ($r = 0; $r -lt 4; $r++) {
+    for ($c = 0; $c -lt 4; $c++) {
+        $t12.Cell($r+1, $c+1).Shape.TextFrame.TextRange.Text = $t12Data[$r][$c]
+    }
+}
+Style-Table $t12 4 4 $colNavy 12.5
+$t12.Cell(4, 2).Shape.Fill.ForeColor.RGB = $colSoftTeal
+$t12.Cell(4, 2).Shape.TextFrame.TextRange.Font.Color.RGB = $colTeal
+$t12.Cell(4, 2).Shape.TextFrame.TextRange.Font.Bold = -1
+
+# 右カード：クロス分析の説明テキスト
+Add-Card $s12 538 124 398 392 "クロス集計から見える出展の効果" $colNavy
+$s12Desc = @"
+【1. 初認知層でも体験後は約9割が好意的評価へ転換】
+・「今日初めて当院を知った」67名であっても、ブースで測定や多職種からのアドバイスを体験した時点（Q3）では、88.1%（59名）が「ぜひ利用したい（14.9%）・候補として検討したい（73.1%）」と回答した。
+
+【2. 名前のみ認知層の93.7%が第一選択の候補へ】
+・地域で最も多い「名前や場所は知っている」層（126名）でも、直接スタッフと接することで93.7%（118名）が利用・検討したいと回答した。
+
+【3. よく知る層は3人に2人が「ぜひ利用したい」】
+・自身や家族の利用経験がある「よく知っている」層（39名）では、「ぜひ利用したい」が66.7%（26名）に達した。当院の取り組みや中身を知ってもらう機会を増やせば、高い確率で当院への信頼・選択意向につながることが数値で裏付けられた。
+"@
+Add-Text $s12 552 174 370 330 $s12Desc 13.5 $colNavy $false 1 | Out-Null
+
+
+# ==============================================================================
+# SLIDE 13: 【第4部：来年度の提案】来年度に向けた改善点と今後のアクション
+# ==============================================================================
+$s13 = $pres.Slides.Add(13, 12)
+Add-Header $s13 "第4部：来年度提案" "来年度に向けた改善点（出展体制の見直し・知名度向上へのアクション）" "今年度の課題（3区画の混雑・InBody制限・休憩未確保・PR不足）を踏まえ、来年度に向け4点を提案" 13 $colBlue
+
+# 4つの提案ボックス（2×2グリッド、大きく読みやすい文字）
+Add-Card $s13 24 124 448 188 "提案1：出展規模を「3区画 → 4区画」へ拡大" $colRed
+$p1Text = @"
+・今年度は四役相談のもと3区画で実施したが、目標の4.7倍（236名）が回答する盛況となり、待合椅子不足（座れず外出案内）や移動時の狭さが発生した。
+・来年度は当初起案の「4区画」を確保し、測定スペース・待合椅子・相談動線を拡充して機会損失を防ぐ。
+"@
+Add-Text $s13 38 172 420 132 $p1Text 13.5 $colNavy $false 1 | Out-Null
+
+Add-Card $s13 488 124 448 188 "提案2：スタッフ増員による「休憩確保」と「誘導強化」" $colAmber
+$p2Text = @"
+・スタッフの76.9%が人員不足（休憩が10〜15分×2回しか取れない、2日連続出勤の負担）を課題に挙げた。
+・来年度は各部署の参加人数を増員して「1時間の休憩」を確実に回すとともに、「全体統括」と「誘導係（整理券方式や順路固定）」を配置する。
+"@
+Add-Text $s13 502 172 420 132 $p2Text 13.5 $colNavy $false 1 | Out-Null
+
+Add-Card $s13 24 326 448 190 "提案3：InBody 2台体制 ＆ 病院PR資材・備品の充実" $colBlue
+$p3Text = @"
+・InBodyは30分以上の待ち時間が発生し終盤に受付を中止したため、来年度は「InBody 2台体制」とする。
+・リハビリ病院の役割（入院専門・退院後の訪問/通所リハ）を正しく伝えるため「病院広報誌・紹介パネル・映像」を持参し、バインダー・靴ベラ・ノベルティを拡充する。
+"@
+Add-Text $s13 38 374 420 134 $p3Text 13.5 $colNavy $false 1 | Out-Null
+
+Add-Card $s13 488 326 448 190 "提案4：知名度向上に向けた「健康教室」の定期開催" $colTeal
+$p4Text = @"
+・八千代市民の80.7%が当院を詳しく知らない現状を打破するため、年1回の産業祭だけでなく、定期的な「健康教室」でコツコツと知名度向上を進める。
+・テーマには、今回Q4で3割を超えた「①転倒予防・ストレッチ」「②栄養」「③認知機能」「④介護・終活」を活用する。
+"@
+Add-Text $s13 502 374 420 134 $p4Text 13.5 $colNavy $false 1 | Out-Null
+
+
+# ==============================================================================
+# SLIDE 14: 【第4部：総括】まとめ（弱点・得られたこと・来年度の課題｜来場者×スタッフ）
+# ==============================================================================
+$s14 = $pres.Slides.Add(14, 12)
+Add-Header $s14 "第4部：総括まとめ" "総括：当院の弱点・出展で得られたこと・来年度の課題（アンケートの掛け合わせ）" "来場者アンケート（236名）とスタッフアンケート（13名）の双方のデータが完全に一致して示す結論" 14 $colNavy
+
+# 3段横長カードで総院長・四役が一読で把握できる構成
+# 1. 当院の弱点
+Add-Rect $s14 24 124 912 120 $colWhite $colCardBorder $false | Out-Null
+Add-Rect $s14 24 124 176 120 $colRed | Out-Null
+Add-Text $s14 32 156 160 60 "1. 当院の弱点`n（知名度の低さ）" 16 $colWhite $true 2 | Out-Null
+$sum1 = @"
+・【来場者データ】八千代市民（171名）であっても21.1%が「今日初めて知った」、59.6%が「名前や場所しか知らない」（計80.7%）。特に家族世代（市内40〜60代）や当事者世代（市内80代）でも認知が不足している。
+・【スタッフデータ】「まだまだ当院の認知度が低いことが分かった」「リハ病院の役割（入院専門・訪問/通所）が知られておらず、他院と誤認している人もいた」と双方が一致。日常の一般外来がない当院にとって、地域での知名度向上が最重要課題である。
+"@
+Add-Text $s14 212 130 712 110 $sum1 13.2 $colNavy $false 1 | Out-Null
+
+# 2. 出展で得られたこと
+Add-Rect $s14 24 256 912 124 $colWhite $colCardBorder $false | Out-Null
+Add-Rect $s14 24 256 176 124 $colTeal | Out-Null
+Add-Text $s14 32 290 160 60 "2. 出展で`n得られたこと" 16 $colWhite $true 2 | Out-Null
+$sum2 = @"
+・【来場者データ】来場268名・回答236名（目標比472%）を達成。初めて知った層でも体験後は88.1%（全体では90.3%・213名）が「万が一の際に利用・検討したい」と回答し、今後の健康教室に向けた4大関心テーマ（転倒・栄養・認知機能・介護終活）も判明した。
+・【スタッフデータ】6部署協働により参加満足度100%・地域貢献実感92.3%を達成。「他部門と一致団結できた」「測定から栄養・看護・相談へつなぐ連携ができた」と、多職種連携の強化と対面PRの有効性が実証された。
+"@
+Add-Text $s14 212 262 712 114 $sum2 13.2 $colNavy $false 1 | Out-Null
+
+# 3. 来年度の課題
+Add-Rect $s14 24 392 912 124 $colWhite $colCardBorder $false | Out-Null
+Add-Rect $s14 24 392 176 124 $colBlue | Out-Null
+Add-Text $s14 32 426 160 60 "3. 来年度の課題`n（環境と体制整備）" 16 $colWhite $true 2 | Out-Null
+$sum3 = @"
+・【来場者×スタッフの一致】来場者側で「血管年齢（72.9%）・筋肉量測定（66.5%）」に人気が集中し「順路表示やバインダー・靴ベラ」の要望が出たことと、スタッフ側で「3区画での混雑・待合椅子不足」「InBody 30分待ちによる受付中止」「人員不足・休憩未確保（問題あり76.9%）」が挙がったことは表裏一体である。
+・【結論】来年度は「① 4区画への拡大」「② InBody 2台体制と病院紹介パネル・広報誌の持参」「③ 誘導係・各部署スタッフの増員（休憩1時間確保）」を行い、健康教室と連動して着実に当院の知名度を向上させる。
+"@
+Add-Text $s14 212 398 712 114 $sum3 13.2 $colNavy $false 1 | Out-Null
 
 $pres.SaveAs($outPath)
+$pres.SaveAs($webPath)
 
-$artifactDir = "C:\Users\coffe\.gemini\antigravity\brain\57f12e92-5bc8-492c-8c7d-8ab9b420cf7a"
 for ($i = 1; $i -le $pres.Slides.Count; $i++) {
-    $imgPath = Join-Path $artifactDir ("slide_" + $i + ".png")
+    $imgPath = Join-Path $artifactDir ("slide_v2_" + $i + ".png")
     $pres.Slides.Item($i).Export($imgPath, "PNG", 1920, 1080)
 }
 
 $pres.Close()
 $pp.Quit()
-Write-Host "Successfully generated PowerPoint and exported 5 slide images: $outPath"
+Write-Host "Successfully generated 14-slide PowerPoint and exported PNGs: $outPath"
