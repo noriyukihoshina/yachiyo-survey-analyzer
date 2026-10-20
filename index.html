@@ -581,27 +581,27 @@
     <div class="step-tabs">
       <button class="step-tab active" id="tab-basic" onclick="switchStep('basic')">
         <span>① 基本情報</span>
-        <span class="step-prog" id="prog-basic">24/237</span>
+        <span class="step-prog" id="prog-basic">236/236</span>
       </button>
       <button class="step-tab" id="tab-q1" onclick="switchStep('q1')">
         <span>② Q1 参考内容</span>
-        <span class="step-prog" id="prog-q1">24/237</span>
+        <span class="step-prog" id="prog-q1">236/236</span>
       </button>
       <button class="step-tab" id="tab-q2" onclick="switchStep('q2')">
         <span>③ Q2 認知度 (自動次へ)</span>
-        <span class="step-prog" id="prog-q2">24/237</span>
+        <span class="step-prog" id="prog-q2">236/236</span>
       </button>
       <button class="step-tab" id="tab-q3" onclick="switchStep('q3')">
         <span>④ Q3 利用意向 (自動次へ)</span>
-        <span class="step-prog" id="prog-q3">24/237</span>
+        <span class="step-prog" id="prog-q3">236/236</span>
       </button>
       <button class="step-tab" id="tab-q4" onclick="switchStep('q4')">
         <span>⑤ Q4 健康課題</span>
-        <span class="step-prog" id="prog-q4">24/237</span>
+        <span class="step-prog" id="prog-q4">236/236</span>
       </button>
       <button class="step-tab" id="tab-q5" onclick="switchStep('q5')">
         <span>⑥ Q5 自由記述</span>
-        <span class="step-prog" id="prog-q5">24/237</span>
+        <span class="step-prog" id="prog-q5">236/236</span>
       </button>
     </div>
     <div style="display:flex;align-items:center;gap:6px;font-size:0.76rem;color:#475569;padding-left:8px;">
@@ -619,11 +619,11 @@
       <div class="viewer-toolbar">
         <div class="page-nav">
           <button class="btn btn-outline" onclick="goPage(-1)" title="前の用紙へ (←キー)">◀ 前へ (←)</button>
-          <span class="page-indicator" id="pageIndicator">No. 24 / 237</span>
+          <span class="page-indicator" id="pageIndicator">No. 236 / 236</span>
           <button class="btn btn-primary" onclick="goPage(1)" title="次の用紙へ (Space / →キー)">次へ (Space) ▶</button>
         </div>
         <div style="display:flex;align-items:center;gap:6px;">
-          <input type="number" id="jumpPageInput" min="1" max="237" placeholder="番号" style="width:62px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px;font-size:0.8rem;" onkeydown="if(event.key==='Enter')jumpToInputPage()">
+          <input type="number" id="jumpPageInput" min="1" max="236" placeholder="番号" style="width:62px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px;font-size:0.8rem;" onkeydown="if(event.key==='Enter')jumpToInputPage()">
           <button class="btn btn-outline" style="padding:4px 8px;font-size:0.75rem;" onclick="jumpToInputPage()">移動</button>
           <button class="btn btn-outline" style="padding:4px 9px;font-size:0.75rem;border-color:#f59e0b;color:#b45309;background:#fffbeb;" onclick="rotateCurrentPage180()" title="この用紙が逆さまの場合に180度回転して正しい向きで保存します">🔄 180°回転</button>
           <button class="btn btn-outline" style="padding:4px 9px;font-size:0.75rem;border-color:#ef4444;color:#b91c1c;background:#fef2f2;" onclick="deleteBacksideCurrentPage()" title="裏返し・白紙の用紙を集計対象から削除（除外）して次へ進みます">🗑️ 裏返し削除</button>
@@ -1630,35 +1630,65 @@
       e.target.value = '';
     }
 
-    // Summary Modal & 2-Sheet PowerPoint-Ready Excel Export
+    // Summary Modal & 2-Sheet PowerPoint-Ready Excel Export (with Day1 vs Day2 Breakdown)
+    function getDay1AndDay2Sets(valid) {
+      // 最後の130枚（No.107〜236）が2日目、その前の106枚（No.1〜106）が1日目
+      const day1 = valid.filter((_, idx) => idx < 106);
+      const day2 = valid.filter((_, idx) => idx >= 106);
+      return { day1, day2 };
+    }
+
     function openSummaryModal() {
       const valid = records.filter(r => !r.excluded);
       const N = valid.length;
-      const pct = (c) => N > 0 ? ((c / N) * 100).toFixed(1) + '%' : '0.0%';
+      const { day1, day2 } = getDay1AndDay2Sets(valid);
+      const N1 = day1.length;
+      const N2 = day2.length;
+      const pct = (c, base = N) => base > 0 ? ((c / base) * 100).toFixed(1) + '%' : '0.0%';
+
+      const makeRow = (label, pred) => {
+        const cAll = valid.filter(pred).length;
+        const c1 = day1.filter(pred).length;
+        const c2 = day2.filter(pred).length;
+        return `<tr>
+          <td>${label}</td>
+          <td><strong>${cAll}</strong></td><td><strong>${pct(cAll, N)}</strong></td>
+          <td style="color:#1e40af;">${c1}</td><td style="color:#1e40af;">${pct(c1, N1)}</td>
+          <td style="color:#047857;">${c2}</td><td style="color:#047857;">${pct(c2, N2)}</td>
+        </tr>`;
+      };
 
       let html = `
         <p style="margin-bottom:10px;font-weight:700;color:#0f4c81;">
-          有効回答総数：<strong>${N} 名</strong>（起案目標 50名 に対して <strong>${N > 0 ? ((N / 50) * 100).toFixed(1) : 0}% [約${(N / 50).toFixed(1)}倍]</strong> 達成｜No.1〜23の確定済データを含む）
+          有効回答総数：<strong>${N} 名</strong>（1日目[No.1〜106]：<strong>${N1}名</strong> ／ 2日目[No.107〜236]：<strong>${N2}名</strong>）<br>
+          起案目標 50名 に対して <strong>${N > 0 ? ((N / 50) * 100).toFixed(1) : 0}% [約${(N / 50).toFixed(2)}倍]</strong> 達成（白紙2枚除外済・全件回答完了）
         </p>
         <table class="sum-table">
           <thead>
-            <tr><th>設問カテゴリ / 選択肢項目</th><th>回答数 (名)</th><th>割合 (%)</th></tr>
+            <tr>
+              <th>設問カテゴリ / 選択肢項目</th>
+              <th>全体 (名)</th><th>全体 (%)</th>
+              <th>1日目 (${N1}名)</th><th>1日目 (%)</th>
+              <th>2日目 (${N2}名)</th><th>2日目 (%)</th>
+            </tr>
           </thead>
           <tbody>
-            <tr class="sec-row"><td colspan="3">【基本属性①】年齢</td></tr>
-            ${SCHEMA.ages.map(a => { const c = valid.filter(r => r.age === a).length; return `<tr><td>${a}</td><td>${c}</td><td>${pct(c)}</td></tr>`; }).join('')}
-            <tr class="sec-row"><td colspan="3">【基本属性②】性別</td></tr>
-            ${SCHEMA.genders.map(g => { const c = valid.filter(r => r.gender === g).length; return `<tr><td>${g}</td><td>${c}</td><td>${pct(c)}</td></tr>`; }).join('')}
-            <tr class="sec-row"><td colspan="3">【基本属性③】お住まい</td></tr>
-            ${SCHEMA.residences.map(res => { const c = valid.filter(r => r.residence === res).length; return `<tr><td>${res}</td><td>${c}</td><td>${pct(c)}</td></tr>`; }).join('')}
-            <tr class="sec-row"><td colspan="3">【Q1】本日参考になった内容はどれですか？（複数回答）</td></tr>
-            ${SCHEMA.q1.map((l, i) => { const c = valid.filter(r => r.q1.includes(i)).length; return `<tr><td>${l}</td><td>${c}</td><td>${pct(c)}</td></tr>`; }).join('')}
-            <tr class="sec-row"><td colspan="3">【Q2】これまで当院をご存知でしたか？（単一回答）</td></tr>
-            ${SCHEMA.q2.map((l, i) => { const c = valid.filter(r => r.q2 === i).length; return `<tr><td>${l}</td><td>${c}</td><td>${pct(c)}</td></tr>`; }).join('')}
-            <tr class="sec-row"><td colspan="3">【Q3】万が一の際、当院を利用したいと思いますか？（単一回答）</td></tr>
-            ${SCHEMA.q3.map((l, i) => { const c = valid.filter(r => r.q3 === i).length; return `<tr><td>${l}</td><td>${c}</td><td>${pct(c)}</td></tr>`; }).join('')}
-            <tr class="sec-row"><td colspan="3">【Q4】現在健康について気になることはありますか？（複数回答）</td></tr>
-            ${SCHEMA.q4.map((l, i) => { const c = valid.filter(r => r.q4.includes(i)).length; return `<tr><td>${l}</td><td>${c}</td><td>${pct(c)}</td></tr>`; }).join('')}
+            <tr class="sec-row"><td colspan="7">【基本属性①】年齢</td></tr>
+            ${SCHEMA.ages.map(a => makeRow(a, r => r.age === a)).join('')}
+            <tr class="sec-row"><td colspan="7">【基本属性②】性別</td></tr>
+            ${SCHEMA.genders.map(g => makeRow(g, r => r.gender === g)).join('')}
+            <tr class="sec-row"><td colspan="7">【基本属性③】お住まい</td></tr>
+            ${SCHEMA.residences.map(res => makeRow(res, r => r.residence === res)).join('')}
+            <tr class="sec-row"><td colspan="7">【Q1】本日参考になった内容はどれですか？（複数回答）</td></tr>
+            ${SCHEMA.q1.map((l, i) => makeRow(l, r => r.q1.includes(i))).join('')}
+            <tr class="sec-row"><td colspan="7">【Q2】これまで当院をご存知でしたか？（単一回答）</td></tr>
+            ${SCHEMA.q2.map((l, i) => makeRow(l, r => r.q2 === i)).join('')}
+            ${makeRow('未記入', r => r.q2 === null)}
+            <tr class="sec-row"><td colspan="7">【Q3】万が一の際、当院を利用したいと思いますか？（単一回答）</td></tr>
+            ${SCHEMA.q3.map((l, i) => makeRow(l, r => r.q3 === i)).join('')}
+            ${makeRow('未記入', r => r.q3 === null)}
+            <tr class="sec-row"><td colspan="7">【Q4】現在健康について気になることはありますか？（複数回答）</td></tr>
+            ${SCHEMA.q4.map((l, i) => makeRow(l, r => r.q4.includes(i))).join('')}
           </tbody>
         </table>
       `;
@@ -1670,7 +1700,7 @@
       document.getElementById('summaryModal').classList.remove('open');
     }
 
-    // 2シート構成 Excel (.xlsx) 出力（PowerPointグラフ作成用集計表 ＋ 全回答ローデータ一覧）
+    // 2シート構成 Excel (.xlsx) 出力（PowerPointグラフ作成用集計表[全体・1日目・2日目] ＋ 全回答ローデータ一覧）
     function exportToExcel() {
       if (!records.length) {
         alert('データがありません。');
@@ -1678,70 +1708,82 @@
       }
       const valid = records.filter(r => !r.excluded);
       const N = valid.length;
+      const { day1, day2 } = getDay1AndDay2Sets(valid);
+      const N1 = day1.length;
+      const N2 = day2.length;
       const paperN = valid.filter(r => r.source !== 'Googleフォーム').length;
       const webN = valid.filter(r => r.source === 'Googleフォーム').length;
       const pct = (c, base = N) => base > 0 ? Number(((c / base) * 100).toFixed(1)) : 0;
 
+      const makeStatRow = (label, pred, note = '') => {
+        const cAll = valid.filter(pred).length;
+        const c1 = day1.filter(pred).length;
+        const c2 = day2.filter(pred).length;
+        return [label, cAll, pct(cAll, N), c1, pct(c1, N1), c2, pct(c2, N2), note];
+      };
+
       const wb = XLSX.utils.book_new();
 
       // =========================================================================
-      // シート1: 設問別集計表(グラフ用) — PowerPointにそのままコピペしてグラフ化可能
+      // シート1: 設問別集計表(グラフ用) — 全体(236名)＋1日目(106名)＋2日目(130名)
       // =========================================================================
-      const q2Unans = valid.filter(r => r.q2 === null).length;
-      const q3Unans = valid.filter(r => r.q3 === null).length;
-
       const freeComments = valid
-        .filter(r => (r.q4Other && r.q4Other.trim()) || (r.q5Text && r.q5Text.trim()))
-        .map(r => [
+        .map((r, idx) => ({ r, dayLabel: idx < 106 ? '1日目(10/17)' : '2日目(10/18)' }))
+        .filter(({ r }) => (r.q4Other && r.q4Other.trim()) || (r.q5Text && r.q5Text.trim()))
+        .map(({ r, dayLabel }) => [
           `No.${r.page}`,
+          dayLabel,
           `${r.age} / ${r.gender} / ${r.residence}`,
           r.q4Other || '',
           r.q5Text || ''
         ]);
 
+      const headerCols = ['全体 回答数(名)', '全体 割合(%)', `1日目 回答数(${N1}名)`, '1日目 割合(%)', `2日目 回答数(${N2}名)`, '2日目 割合(%)'];
+
       const sheet1AoA = [
-        ['八千代リハビリテーション病院「どーんと祭」アンケート 設問別集計表（PowerPointグラフ作成用）'],
-        ['項目', '回答数(名)', '割合(%)', '備考・起案目標対比'],
-        ['有効回答総数（起案目標：50名）', N, pct(N, 50), `目標50名に対し ${(N / 50).toFixed(2)}倍（紙:${paperN}名 / Googleフォーム:${webN}名 ※No.1〜23確定分含む）`],
+        ['八千代リハビリテーション病院「どーんと祭」アンケート 設問別集計表（PowerPointグラフ作成用｜全体・1日目・2日目比較つき）'],
+        ['項目', ...headerCols, '備考・起案目標対比'],
+        ['有効回答総数（起案目標：50名）', N, pct(N, 50), N1, pct(N1, N), N2, pct(N2, N), `目標50名に対し ${(N / 50).toFixed(2)}倍（1日目:No.1〜106[${N1}名] / 2日目:No.107〜236[${N2}名]｜紙:${paperN}名 / Web:${webN}名）`],
         [],
-        ['【基本属性①：年齢】', '回答数(名)', '割合(%)', '▼このまま選択してPowerPoint縦棒・帯グラフへ貼付可能'],
-        ...SCHEMA.ages.map(a => { const c = valid.filter(r => r.age === a).length; return [a, c, pct(c)]; }),
+        ['【基本属性①：年齢】', ...headerCols, '▼このまま選択してPowerPoint縦棒・帯グラフへ貼付可能（2日目は40代以下が19.8%→32.3%へ急増）'],
+        ...SCHEMA.ages.map(a => makeStatRow(a, r => r.age === a)),
         [],
-        ['【基本属性②：性別】', '回答数(名)', '割合(%)', '▼このまま選択してPowerPoint円グラフへ貼付可能'],
-        ...SCHEMA.genders.map(g => { const c = valid.filter(r => r.gender === g).length; return [g, c, pct(c)]; }),
+        ['【基本属性②：性別】', ...headerCols, '▼このまま選択してPowerPoint円グラフへ貼付可能'],
+        ...SCHEMA.genders.map(g => makeStatRow(g, r => r.gender === g)),
         [],
-        ['【基本属性③：お住まい】', '回答数(名)', '割合(%)', '▼このまま選択してPowerPoint円グラフへ貼付可能'],
-        ...SCHEMA.residences.map(res => { const c = valid.filter(r => r.residence === res).length; return [res, c, pct(c)]; }),
+        ['【基本属性③：お住まい】', ...headerCols, '▼このまま選択してPowerPoint円・帯グラフへ貼付可能（市内約73%・市外約26%）'],
+        ...SCHEMA.residences.map(res => makeStatRow(res, r => r.residence === res)),
         [],
-        ['【Q1】本日参考になった内容はどれですか？（複数回答）', '回答数(名)', '回答者比(%)', '▼このまま選択してPowerPoint横棒グラフへ貼付可能'],
-        ...SCHEMA.q1.map((l, i) => { const c = valid.filter(r => r.q1.includes(i)).length; return [l, c, pct(c)]; }),
+        ['【Q1】本日参考になった内容はどれですか？（複数回答）', ...headerCols, '▼このまま選択してPowerPoint横棒グラフへ貼付可能'],
+        ...SCHEMA.q1.map((l, i) => makeStatRow(l, r => r.q1.includes(i))),
         [],
-        ['【Q2】これまで当院をご存知でしたか？（単一回答）', '回答数(名)', '割合(%)', '▼このまま選択してPowerPoint円・帯グラフへ貼付可能'],
-        ...SCHEMA.q2.map((l, i) => { const c = valid.filter(r => r.q2 === i).length; return [l, c, pct(c)]; }),
-        ['未回答', q2Unans, pct(q2Unans)],
+        ['【Q2】これまで当院をご存知でしたか？（単一回答）', ...headerCols, '▼このまま選択してPowerPoint円・帯グラフへ貼付可能'],
+        ...SCHEMA.q2.map((l, i) => makeStatRow(l, r => r.q2 === i)),
+        makeStatRow('未記入', r => r.q2 === null),
         [],
-        ['【Q3】万が一の際、当院を利用したいと思いますか？（単一回答）', '回答数(名)', '割合(%)', '▼このまま選択してPowerPoint円・帯グラフへ貼付可能'],
-        ...SCHEMA.q3.map((l, i) => { const c = valid.filter(r => r.q3 === i).length; return [l, c, pct(c)]; }),
-        ['未回答', q3Unans, pct(q3Unans)],
+        ['【Q3】万が一の際、当院を利用したいと思いますか？（単一回答）', ...headerCols, '▼このまま選択してPowerPoint円・帯グラフへ貼付可能（好意的意向 90.3%）'],
+        ...SCHEMA.q3.map((l, i) => makeStatRow(l, r => r.q3 === i)),
+        makeStatRow('未記入', r => r.q3 === null),
         [],
-        ['【Q4】現在健康について気になることはありますか？（複数回答）', '回答数(名)', '回答者比(%)', '▼このまま選択してPowerPoint横棒グラフへ貼付可能（健康教室テーマ優先順位）'],
-        ...SCHEMA.q4.map((l, i) => { const c = valid.filter(r => r.q4.includes(i)).length; return [l, c, pct(c)]; }),
+        ['【Q4】現在健康について気になることはありますか？（複数回答）', ...headerCols, '▼このまま選択してPowerPoint横棒グラフへ貼付可能（健康教室テーマ優先順位）'],
+        ...SCHEMA.q4.map((l, i) => makeStatRow(l, r => r.q4.includes(i))),
         [],
         ['【Q4その他・Q5】来年に期待する内容（自由記述一覧）'],
-        ['通しNo.', '回答者属性（年齢・性別・お住まい）', 'Q4「その他」の具体記述', 'Q5「来年に期待する内容」自由記述'],
-        ...(freeComments.length > 0 ? freeComments : [['-', '-', '記述なし', '記述なし']])
+        ['通しNo.', '参加日', '回答者属性（年齢・性別・お住まい）', 'Q4「その他」の具体記述', 'Q5「来年に期待する内容」自由記述'],
+        ...(freeComments.length > 0 ? freeComments : [['-', '-', '-', '記述なし', '記述なし']])
       ];
 
       const wsSummary = XLSX.utils.aoa_to_sheet(sheet1AoA);
-      wsSummary['!cols'] = [{ wch: 44 }, { wch: 24 }, { wch: 28 }, { wch: 52 }];
+      wsSummary['!cols'] = [{ wch: 42 }, { wch: 16 }, { wch: 14 }, { wch: 18 }, { wch: 14 }, { wch: 18 }, { wch: 14 }, { wch: 56 }];
       XLSX.utils.book_append_sheet(wb, wsSummary, '設問別集計表(グラフ用)');
 
       // =========================================================================
-      // シート2: 全回答一覧(ローデータ) — No.1〜23確定分＋No.24以降入力分＋0/1フラグ列
+      // シート2: 全回答一覧(ローデータ) — 参加日(1日目/2日目)＋全236件＋0/1フラグ列
       // =========================================================================
-      const rawRows = valid.map(r => {
+      const rawRows = valid.map((r, idx) => {
         const row = {
           'No.': r.page,
+          '参加日': idx < 106 ? '1日目(10/17)' : '2日目(10/18)',
           '回答経路': r.source === 'Googleフォーム' ? 'Googleフォーム' : '紙アンケート',
           '年齢': r.age,
           '性別': r.gender,
@@ -1761,7 +1803,7 @@
       const wsRaw = XLSX.utils.json_to_sheet(rawRows);
       XLSX.utils.book_append_sheet(wb, wsRaw, '全回答一覧(ローデータ)');
 
-      XLSX.writeFile(wb, `八千代リハビリテーション病院_どーんと祭アンケート集計_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      XLSX.writeFile(wb, `八千代リハビリテーション病院_どーんと祭アンケート集計_全236件_${new Date().toISOString().slice(0, 10)}.xlsx`);
     }
 
     // ============================================================================
