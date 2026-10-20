@@ -1,3 +1,6 @@
 setup_cloud_storage.ps1
 *.xlsm
 *.pdf
+cloud_backup_*.json
+cleaned_*.json
+
