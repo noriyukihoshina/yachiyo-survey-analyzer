@@ -97,10 +97,10 @@ function Add-SoftHeader($slide, [string]$badgeText, [string]$titleText, [string]
     # 上部ソフトヘッダーカード
     Add-Rect $slide 20 14 920 96 $colWhite $colBorder $true 0.12 | Out-Null
     # ピル型バッジ
-    Add-Rect $slide 36 26 164 32 $themeColor -1 $true 0.5 | Out-Null
-    Add-Text $slide 36 28 164 28 $badgeText 13 $colWhite $true 2 | Out-Null
+    Add-Rect $slide 36 26 184 32 $themeColor -1 $true 0.5 | Out-Null
+    Add-Text $slide 36 28 184 28 $badgeText 12.5 $colWhite $true 2 | Out-Null
     # タイトル（大きく見やすく）
-    Add-Text $slide 212 22 640 38 $titleText 21 $colText $true 1 | Out-Null
+    Add-Text $slide 230 22 620 38 $titleText 20 $colText $true 1 | Out-Null
     # ページ番号ピル
     Add-Rect $slide 856 26 68 30 $pastelColor -1 $true 0.5 | Out-Null
     Add-Text $slide 856 28 68 26 ("$pageNo / $totalSlides") 12.5 $themeColor $true 2 | Out-Null
@@ -146,15 +146,15 @@ function Add-DonutChart($slide, [single]$cx, [single]$cy, [single]$diameter, [ar
         }
     }
     # 中央の白穴（ドーナツホール）
-    $holeD = $diameter * 0.54
+    $holeD = $diameter * 0.58
     $holeL = $cx - ($holeD / 2.0)
     $holeT = $cy - ($holeD / 2.0)
     Add-Oval $slide $holeL $holeT $holeD $holeD $colWhite -1 | Out-Null
     if ($centerTopText -ne "") {
-        Add-Text $slide ($holeL + 4) ($cy - 26) ($holeD - 8) 30 $centerTopText 16 $colText $true 2 | Out-Null
+        Add-Text $slide ($cx - 75) ($cy - 22) 150 26 $centerTopText 13.5 $colText $true 2 | Out-Null
     }
     if ($centerSubText -ne "") {
-        Add-Text $slide ($holeL + 4) ($cy + 2) ($holeD - 8) 24 $centerSubText 12.5 $colSubText $true 2 | Out-Null
+        Add-Text $slide ($cx - 75) ($cy + 2) 150 24 $centerSubText 12.5 $colSubText $true 2 | Out-Null
     }
 }
 
@@ -163,9 +163,9 @@ function Add-LegendItem($slide, [single]$left, [single]$top, [single]$width, [in
     if ($highlight) {
         Add-Rect $slide ($left - 6) ($top - 4) ($width + 12) 38 $colPastelA $colAmber $true 0.25 | Out-Null
     }
-    Add-Oval $slide $left ($top + 5) 18 18 $color -1 | Out-Null
-    Add-Text $slide ($left + 26) $top ($width - 140) 28 $label 15 $colText $true 1 | Out-Null
-    Add-Text $slide ($left + $width - 125) $top 125 28 $valText 15.5 $color $true 3 | Out-Null
+    Add-Oval $slide $left ($top + 5) 16 16 $color -1 | Out-Null
+    Add-Text $slide ($left + 22) $top 220 28 $label 14 $colText $true 1 | Out-Null
+    Add-Text $slide ($left + $width - 155) $top 155 28 $valText 14.5 $color $true 3 | Out-Null
 }
 
 # 丸みのある横棒グラフ（複数選択や年代別用）
