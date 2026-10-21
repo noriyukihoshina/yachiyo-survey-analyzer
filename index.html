@@ -571,7 +571,8 @@
       <input type="file" id="googleFormInput" accept=".csv,.xlsx,.xls" multiple style="display:none" onchange="importGoogleFormFile(event)">
 
       <button class="btn btn-outline" style="font-size:0.76rem;padding:5px 9px;" onclick="saveToCloudNow(true)">☁️ 保存</button>
-      <button class="btn btn-outline" style="font-size:0.76rem;padding:5px 9px;" onclick="openSummaryModal()">📋 集計プレビュー</button>
+      <button class="btn btn-primary" style="background:linear-gradient(90deg,#f59e0b,#ea580c);border-color:#fbbf24;font-size:0.86rem;padding:6px 14px;box-shadow:0 2px 6px rgba(234,88,12,0.35);" onclick="openChartsOnlyModal()">📈 結果グラフ表示 (考察なし)</button>
+      <button class="btn btn-outline" style="font-size:0.76rem;padding:5px 9px;" onclick="openSummaryModal()">📋 集計表</button>
       <a class="btn btn-primary" style="text-decoration:none;background:#0d9488;" href="/survey_result_handout.pptx" download="アンケート結果報告.pptx">📄 結果報告(スタッフ配布用.pptx)</a>
       <a class="btn btn-primary" style="text-decoration:none;background:#1e3a8a;" href="/report_presentation.pptx" download="八千代リハビリテーション病院_どーんと祭出展結果報告_四役プレゼン.pptx">📽️ 四役報告パワポ(.pptx)</a>
       <button class="btn btn-success" onclick="exportToExcel()">📊 集計・Excel出力 (2シート)</button>
@@ -683,11 +684,37 @@
       <div class="modal-header">
         <h3>📊 集計結果プレビュー（No.1〜23確定分 ＋ No.24以降入力分 合算）</h3>
         <div style="display:flex;gap:8px;">
+          <button class="btn btn-primary" style="background:#ea580c;" onclick="closeSummaryModal();openChartsOnlyModal();">📈 グラフ表示へ切替</button>
           <button class="btn btn-success" onclick="exportToExcel()">📊 この内容でExcel(.xlsx)を出力</button>
           <button class="btn btn-outline" onclick="closeSummaryModal()">✕ 閉じる</button>
         </div>
       </div>
       <div class="modal-body" id="summaryModalBody"></div>
+    </div>
+  </div>
+
+  <!-- Charts-Only Modal (For showing pure graphs without any commentary to Department Head) -->
+  <div class="modal-backdrop" id="chartsOnlyModal">
+    <div class="modal-card" style="max-width:1360px;width:96vw;height:92vh;max-height:92vh;background:#f4f7fc;">
+      <div class="modal-header" style="background:#1e3a8a;padding:12px 22px;">
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+          <h3 style="font-size:1.15rem;font-weight:800;letter-spacing:0.02em;">📈 来場者アンケート 集計結果グラフ</h3>
+          <div style="display:inline-flex;background:rgba(255,255,255,0.14);padding:3px;border-radius:8px;gap:4px;">
+            <button class="btn" id="chartFilterAll" style="padding:4px 12px;font-size:0.8rem;background:#fff;color:#1e3a8a;" onclick="setChartDayFilter('all')">全体 (236名)</button>
+            <button class="btn" id="chartFilterDay1" style="padding:4px 12px;font-size:0.8rem;background:transparent;color:#fff;" onclick="setChartDayFilter('day1')">1日目 (106名)</button>
+            <button class="btn" id="chartFilterDay2" style="padding:4px 12px;font-size:0.8rem;background:transparent;color:#fff;" onclick="setChartDayFilter('day2')">2日目 (130名)</button>
+          </div>
+          <div style="display:inline-flex;background:rgba(255,255,255,0.14);padding:3px;border-radius:8px;gap:4px;">
+            <button class="btn" id="chartLayoutGrid" style="padding:4px 12px;font-size:0.8rem;background:#fff;color:#1e3a8a;" onclick="setChartLayoutMode('grid')">🗂️ 2列一覧表示</button>
+            <button class="btn" id="chartLayoutSingle" style="padding:4px 12px;font-size:0.8rem;background:transparent;color:#fff;" onclick="setChartLayoutMode('single')">🔍 1問ずつ拡大表示</button>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:0.78rem;color:#dbeafe;font-weight:700;">※各設問とも「選択肢1＝青、選択肢2＝緑、選択肢3＝橙、選択肢4＝紫、選択肢5＝赤…」で統一</span>
+          <button class="btn btn-outline" style="font-weight:800;padding:6px 14px;" onclick="closeChartsOnlyModal()">✕ 閉じる</button>
+        </div>
+      </div>
+      <div class="modal-body" id="chartsOnlyModalBody" style="padding:18px 22px;overflow-y:auto;flex:1;"></div>
     </div>
   </div>
 
@@ -1700,6 +1727,350 @@
 
     function closeSummaryModal() {
       document.getElementById('summaryModal').classList.remove('open');
+    }
+
+    // =========================================================================
+    // 📈 考察なし・結果グラフのみ表示モード（選択肢番号ごとに色を完全固定）
+    //   選択肢1＝常に青(#2563eb)、選択肢2＝常に緑(#10b981)、選択肢3＝常に橙(#f59e0b)、
+    //   選択肢4＝常に紫(#8b5cf6)、選択肢5＝常に赤(#ef4444)、選択肢6＝常に水色(#06b6d4)、
+    //   選択肢7＝常に桃(#ec4899)、選択肢8＝常に黄緑(#84cc16)、選択肢9＝常に藍(#6366f1)
+    // =========================================================================
+    const CHOICE_COLORS = [
+      '#2563eb', // 選択肢1: ロイヤルブルー（毎回必ず青）
+      '#10b981', // 選択肢2: エメラルドグリーン
+      '#f59e0b', // 選択肢3: アンバーオレンジ
+      '#8b5cf6', // 選択肢4: バイオレットパープル
+      '#ef4444', // 選択肢5: コーラルレッド
+      '#06b6d4', // 選択肢6: シアンブルー
+      '#ec4899', // 選択肢7: マゼンタピンク
+      '#84cc16', // 選択肢8: ライムグリーン
+      '#6366f1'  // 選択肢9: インディゴ
+    ];
+    const UNANSWERED_COLOR = '#94a3b8';
+
+    let chartDayFilter = 'all';   // 'all' | 'day1' | 'day2'
+    let chartLayoutMode = 'grid'; // 'grid' | 'single'
+    let currentChartSlideIdx = 0;
+    let chartTypeOverrides = {};  // { [qKey]: 'pie' | 'bar' }
+
+    function openChartsOnlyModal() {
+      document.getElementById('chartsOnlyModal').classList.add('open');
+      renderChartsOnlyModal();
+    }
+
+    function closeChartsOnlyModal() {
+      document.getElementById('chartsOnlyModal').classList.remove('open');
+    }
+
+    function setChartDayFilter(mode) {
+      chartDayFilter = mode;
+      ['all', 'day1', 'day2'].forEach(m => {
+        const btn = document.getElementById('chartFilter' + (m === 'all' ? 'All' : m === 'day1' ? 'Day1' : 'Day2'));
+        if (btn) {
+          btn.style.background = (m === mode) ? '#fff' : 'transparent';
+          btn.style.color = (m === mode) ? '#1e3a8a' : '#fff';
+        }
+      });
+      renderChartsOnlyModal();
+    }
+
+    function setChartLayoutMode(mode) {
+      chartLayoutMode = mode;
+      const gBtn = document.getElementById('chartLayoutGrid');
+      const sBtn = document.getElementById('chartLayoutSingle');
+      if (gBtn && sBtn) {
+        gBtn.style.background = mode === 'grid' ? '#fff' : 'transparent';
+        gBtn.style.color = mode === 'grid' ? '#1e3a8a' : '#fff';
+        sBtn.style.background = mode === 'single' ? '#fff' : 'transparent';
+        sBtn.style.color = mode === 'single' ? '#1e3a8a' : '#fff';
+      }
+      renderChartsOnlyModal();
+    }
+
+    function toggleQuestionChartType(qKey, defaultType) {
+      const current = chartTypeOverrides[qKey] || defaultType;
+      chartTypeOverrides[qKey] = current === 'pie' ? 'bar' : 'pie';
+      renderChartsOnlyModal();
+    }
+
+    function stepChartSlide(delta, maxLen) {
+      currentChartSlideIdx = (currentChartSlideIdx + delta + maxLen) % maxLen;
+      renderChartsOnlyModal();
+    }
+
+    function buildDonutSvg(items, baseN, size = 230) {
+      const cx = size / 2;
+      const cy = size / 2;
+      const r = size * 0.36;
+      const strokeW = size * 0.19;
+      const circum = 2 * Math.PI * r;
+      const totalCount = items.reduce((s, it) => s + it.count, 0) || 1;
+      let offsetRatio = 0;
+
+      const circles = items.map(it => {
+        if (it.count <= 0) return '';
+        const ratio = it.count / totalCount;
+        const dash = ratio * circum;
+        const gap = circum - dash;
+        const dashOffset = -offsetRatio * circum;
+        offsetRatio += ratio;
+        return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="transparent" stroke="${it.color}" stroke-width="${strokeW}" stroke-dasharray="${dash} ${gap}" stroke-dashoffset="${dashOffset}" transform="rotate(-90 ${cx} ${cy})" />`;
+      }).join('');
+
+      return `
+        <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="flex-shrink:0;">
+          <circle cx="${cx}" cy="${cy}" r="${r}" fill="transparent" stroke="#e2e8f0" stroke-width="${strokeW}" />
+          ${circles}
+          <text x="${cx}" y="${cy - 4}" text-anchor="middle" font-size="15" font-weight="800" fill="#0f172a">N = ${baseN}名</text>
+          <text x="${cx}" y="${cy + 16}" text-anchor="middle" font-size="12" font-weight="700" fill="#64748b">有効回答</text>
+        </svg>
+      `;
+    }
+
+    function renderChartsOnlyModal() {
+      const validAll = records.filter(r => !r.excluded);
+      const { day1, day2 } = getDay1AndDay2Sets(validAll);
+      const targetSet = chartDayFilter === 'day1' ? day1 : chartDayFilter === 'day2' ? day2 : validAll;
+      const N = targetSet.length;
+
+      // Update button labels with live counts
+      const fAll = document.getElementById('chartFilterAll');
+      const fD1 = document.getElementById('chartFilterDay1');
+      const fD2 = document.getElementById('chartFilterDay2');
+      if (fAll) fAll.textContent = `全体 (${validAll.length}名)`;
+      if (fD1) fD1.textContent = `1日目 (${day1.length}名)`;
+      if (fD2) fD2.textContent = `2日目 (${day2.length}名)`;
+
+      const pctNum = (c) => N > 0 ? ((c / N) * 100) : 0;
+      const pctStr = (c) => pctNum(c).toFixed(1) + '%';
+
+      // 各設問のデータ定義（選択肢1＝青、選択肢2＝緑、選択肢3＝橙…を厳守）
+      const chartQuestions = [
+        {
+          key: 'residence',
+          badge: '基本情報①',
+          title: 'お住まい（単一回答）',
+          defaultType: 'pie',
+          items: SCHEMA.residences.map((label, idx) => ({
+            optLabel: label === '未記入' ? '未記入' : `選択肢${idx + 1}`,
+            label,
+            count: targetSet.filter(r => r.residence === label).length,
+            color: label === '未記入' ? UNANSWERED_COLOR : CHOICE_COLORS[idx % CHOICE_COLORS.length]
+          }))
+        },
+        {
+          key: 'gender',
+          badge: '基本情報②',
+          title: '性別（単一回答）',
+          defaultType: 'pie',
+          items: SCHEMA.genders.map((label, idx) => ({
+            optLabel: label === '未記入' ? '未記入' : `選択肢${idx + 1}`,
+            label,
+            count: targetSet.filter(r => r.gender === label).length,
+            color: label === '未記入' ? UNANSWERED_COLOR : CHOICE_COLORS[idx % CHOICE_COLORS.length]
+          }))
+        },
+        {
+          key: 'age',
+          badge: '基本情報③',
+          title: '年齢（単一回答）',
+          defaultType: 'bar',
+          items: SCHEMA.ages.map((label, idx) => ({
+            optLabel: label === '未記入' ? '未記入' : `選択肢${idx + 1}`,
+            label,
+            count: targetSet.filter(r => r.age === label).length,
+            color: label === '未記入' ? UNANSWERED_COLOR : CHOICE_COLORS[idx % CHOICE_COLORS.length]
+          }))
+        },
+        {
+          key: 'q1',
+          badge: 'Q1（複数回答）',
+          title: 'Q1. 本日参考になった内容はどれですか？',
+          defaultType: 'bar',
+          items: SCHEMA.q1.map((label, idx) => ({
+            optLabel: `選択肢${idx + 1}`,
+            label,
+            count: targetSet.filter(r => r.q1.includes(idx)).length,
+            color: CHOICE_COLORS[idx % CHOICE_COLORS.length]
+          }))
+        },
+        {
+          key: 'q2',
+          badge: 'Q2（単一回答）',
+          title: 'Q2. これまで当院をご存知でしたか？',
+          defaultType: 'pie',
+          items: [
+            ...SCHEMA.q2.map((label, idx) => ({
+              optLabel: `選択肢${idx + 1}`,
+              label,
+              count: targetSet.filter(r => r.q2 === idx).length,
+              color: CHOICE_COLORS[idx % CHOICE_COLORS.length]
+            })),
+            {
+              optLabel: '未記入',
+              label: '未記入',
+              count: targetSet.filter(r => r.q2 === null).length,
+              color: UNANSWERED_COLOR
+            }
+          ]
+        },
+        {
+          key: 'q3',
+          badge: 'Q3（単一回答）',
+          title: 'Q3. 万が一の際、当院を利用したいと思いますか？',
+          defaultType: 'pie',
+          items: [
+            ...SCHEMA.q3.map((label, idx) => ({
+              optLabel: `選択肢${idx + 1}`,
+              label,
+              count: targetSet.filter(r => r.q3 === idx).length,
+              color: CHOICE_COLORS[idx % CHOICE_COLORS.length]
+            })),
+            {
+              optLabel: '未記入',
+              label: '未記入',
+              count: targetSet.filter(r => r.q3 === null).length,
+              color: UNANSWERED_COLOR
+            }
+          ]
+        },
+        {
+          key: 'q4',
+          badge: 'Q4（複数回答）',
+          title: 'Q4. 現在健康について気になることはありますか？',
+          defaultType: 'bar',
+          items: SCHEMA.q4.map((label, idx) => ({
+            optLabel: `選択肢${idx + 1}`,
+            label,
+            count: targetSet.filter(r => r.q4.includes(idx)).length,
+            color: CHOICE_COLORS[idx % CHOICE_COLORS.length]
+          }))
+        }
+      ];
+
+      // 自由記載（Q4その他、Q5）カード
+      const q4Others = targetSet.filter(r => r.q4Other && r.q4Other.trim()).map(r => r.q4Other.trim());
+      const q5Texts = targetSet.filter(r => r.q5Text && r.q5Text.trim()).map(r => r.q5Text.trim());
+
+      const renderQuestionCard = (q, isLarge = false) => {
+        const chartType = chartTypeOverrides[q.key] || q.defaultType;
+        const fontSize = isLarge ? '1.08rem' : '0.94rem';
+        const barHeight = isLarge ? '26px' : '20px';
+        const donutSize = isLarge ? 300 : 210;
+
+        let bodyHtml = '';
+        if (chartType === 'pie') {
+          const svg = buildDonutSvg(q.items, N, donutSize);
+          const legendRows = q.items.map(it => `
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:${isLarge ? '10px 14px' : '7px 10px'};border-radius:8px;background:#f8fafc;border-left:6px solid ${it.color};margin-bottom:7px;">
+              <div style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:${fontSize};color:#0f172a;">
+                <span style="display:inline-block;width:13px;height:13px;border-radius:50%;background:${it.color};flex-shrink:0;"></span>
+                <span style="color:#64748b;font-size:0.78rem;min-width:52px;">${it.optLabel}</span>
+                <span>${it.label}</span>
+              </div>
+              <div style="font-weight:800;font-size:${isLarge ? '1.15rem' : '0.98rem'};color:${it.color};white-space:nowrap;margin-left:12px;">
+                ${it.count}名 (${pctStr(it.count)})
+              </div>
+            </div>
+          `).join('');
+          bodyHtml = `
+            <div style="display:flex;align-items:center;gap:${isLarge ? '36px' : '18px'};padding:${isLarge ? '16px 12px' : '6px 4px'};">
+              ${svg}
+              <div style="flex:1;">${legendRows}</div>
+            </div>
+          `;
+        } else {
+          const bars = q.items.map(it => {
+            const p = pctNum(it.count);
+            const barW = Math.max(p > 0 ? 2.5 : 0, Math.min(100, p));
+            return `
+              <div style="margin-bottom:${isLarge ? '14px' : '9px'};">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;font-size:${fontSize};font-weight:700;">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="display:inline-block;width:13px;height:13px;border-radius:4px;background:${it.color};flex-shrink:0;"></span>
+                    <span style="color:#64748b;font-size:0.76rem;min-width:50px;">${it.optLabel}</span>
+                    <span style="color:#0f172a;">${it.label}</span>
+                  </div>
+                  <span style="color:${it.color};font-weight:800;font-size:${isLarge ? '1.15rem' : '0.98rem'};">${it.count}名 (${pctStr(it.count)})</span>
+                </div>
+                <div style="width:100%;height:${barHeight};background:#e2e8f0;border-radius:999px;overflow:hidden;">
+                  <div style="width:${barW}%;height:100%;background:${it.color};border-radius:999px;transition:width 0.25s;"></div>
+                </div>
+              </div>
+            `;
+          }).join('');
+          bodyHtml = `<div style="padding:${isLarge ? '12px 16px' : '4px 6px'};">${bars}</div>`;
+        }
+
+        return `
+          <div style="background:#fff;border-radius:14px;border:1px solid #cbd5e1;padding:${isLarge ? '22px 26px' : '15px 18px'};box-shadow:0 2px 8px rgba(15,23,42,0.05);display:flex;flex-direction:column;justify-content:space-between;">
+            <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #f1f5f9;padding-bottom:10px;margin-bottom:12px;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span style="background:#2563eb;color:#fff;font-size:0.78rem;font-weight:800;padding:3px 11px;border-radius:99px;">${q.badge}</span>
+                <h4 style="font-size:${isLarge ? '1.35rem' : '1.05rem'};font-weight:800;color:#0f172a;">${q.title}（N=${N}）</h4>
+              </div>
+              <button class="btn btn-outline" style="font-size:0.75rem;padding:4px 10px;" onclick="toggleQuestionChartType('${q.key}', '${q.defaultType}')">
+                ${chartType === 'pie' ? '📊 棒グラフに切替' : '🍩 円グラフに切替'}
+              </button>
+            </div>
+            ${bodyHtml}
+          </div>
+        `;
+      };
+
+      const freeTextCardHtml = (isLarge = false) => `
+        <div style="background:#fff;border-radius:14px;border:1px solid #cbd5e1;padding:${isLarge ? '22px 26px' : '15px 18px'};box-shadow:0 2px 8px rgba(15,23,42,0.05);">
+          <div style="display:flex;align-items:center;gap:10px;border-bottom:2px solid #f1f5f9;padding-bottom:10px;margin-bottom:12px;">
+            <span style="background:#2563eb;color:#fff;font-size:0.78rem;font-weight:800;padding:3px 11px;border-radius:99px;">自由記載</span>
+            <h4 style="font-size:${isLarge ? '1.35rem' : '1.05rem'};font-weight:800;color:#0f172a;">Q4「その他」(${q4Others.length}件) ／ Q5. 来年に期待する内容 (${q5Texts.length}件)</h4>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:14px;max-height:${isLarge ? '56vh' : '270px'};overflow-y:auto;">
+            <div style="background:#f8fafc;padding:10px 12px;border-radius:10px;border:1px solid #e2e8f0;">
+              <div style="font-weight:800;color:#1e3a8a;margin-bottom:6px;font-size:0.86rem;">■ Q4「その他」の記載 (${q4Others.length}件)</div>
+              <ul style="padding-left:18px;font-size:0.84rem;line-height:1.65;color:#1e293b;">
+                ${q4Others.map(t => `<li>${t}</li>`).join('') || '<li>記載なし</li>'}
+              </ul>
+            </div>
+            <div style="background:#f8fafc;padding:10px 12px;border-radius:10px;border:1px solid #e2e8f0;">
+              <div style="font-weight:800;color:#1e3a8a;margin-bottom:6px;font-size:0.86rem;">■ Q5「来年に期待する内容」(${q5Texts.length}件)</div>
+              <ul style="padding-left:18px;font-size:0.84rem;line-height:1.65;color:#1e293b;">
+                ${q5Texts.map(t => `<li>${t}</li>`).join('') || '<li>記載なし</li>'}
+              </ul>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const container = document.getElementById('chartsOnlyModalBody');
+      if (chartLayoutMode === 'grid') {
+        container.innerHTML = `
+          <div style="display:grid;grid-template-columns:repeat(2, 1fr);gap:16px;">
+            ${chartQuestions.map(q => renderQuestionCard(q, false)).join('')}
+            ${freeTextCardHtml(false)}
+          </div>
+        `;
+      } else {
+        const totalSlides = chartQuestions.length + 1;
+        if (currentChartSlideIdx >= totalSlides) currentChartSlideIdx = 0;
+        const slideContent = currentChartSlideIdx < chartQuestions.length
+          ? renderQuestionCard(chartQuestions[currentChartSlideIdx], true)
+          : freeTextCardHtml(true);
+
+        const navPills = [...chartQuestions.map((q, i) => ({ label: q.badge, idx: i })), { label: 'Q5 自由記載', idx: chartQuestions.length }]
+          .map(p => `<button class="btn" style="padding:5px 12px;font-size:0.82rem;background:${p.idx === currentChartSlideIdx ? '#1e3a8a' : '#e2e8f0'};color:${p.idx === currentChartSlideIdx ? '#fff' : '#334155'};" onclick="currentChartSlideIdx=${p.idx};renderChartsOnlyModal();">${p.label}</button>`)
+          .join('');
+
+        container.innerHTML = `
+          <div style="max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:14px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;background:#fff;padding:10px 16px;border-radius:10px;border:1px solid #cbd5e1;">
+              <button class="btn btn-outline" onclick="stepChartSlide(-1, ${totalSlides})">◀ 前のグラフ</button>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;">${navPills}</div>
+              <button class="btn btn-primary" onclick="stepChartSlide(1, ${totalSlides})">次のグラフ ▶</button>
+            </div>
+            ${slideContent}
+          </div>
+        `;
+      }
     }
 
     // 2シート構成 Excel (.xlsx) 出力（PowerPointグラフ作成用集計表[全体・1日目・2日目] ＋ 全回答ローデータ一覧）
